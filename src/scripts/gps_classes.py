@@ -18,6 +18,10 @@ class TrackingPoint():
         # make sure the coordinates are stored as floats
         self.latitude = float(latitude)
         self.longitude = float(longitude)
+        self.elevation = None  #placeholder because in csv
+        self.timestamp = None  #placeholder because in csv
+        self.temperature = None  #placeholder because in csv
+
 
     def __str__(self):
         # for easy printing of the tracking point
