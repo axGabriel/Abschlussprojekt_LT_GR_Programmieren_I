@@ -43,3 +43,6 @@ class TrackPlotter:
         Creates a plot of the speed profile over time.
         """
         pass
+    
+if __name__ == '__main__':
+    pass

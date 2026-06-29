@@ -13,19 +13,19 @@ class GeographicData():
 class TrackingPoint():
     """
     A simple container to store a single coordinate point.
+    Stores latitude, longitude, elevation, timestamp and temperature.
     """
-    def __init__(self, latitude, longitude):
+    def __init__(self, latitude, longitude, elevation, timestamp, temperature):
         # make sure the coordinates are stored as floats
         self.latitude = float(latitude)
         self.longitude = float(longitude)
-        self.elevation = None  #placeholder because in csv
-        self.timestamp = None  #placeholder because in csv
-        self.temperature = None  #placeholder because in csv
-
+        self.elevation = float(elevation) 
+        self.timestamp = timestamp
+        self.temperature = float(temperature) 
 
     def __str__(self):
         # for easy printing of the tracking point
-        return f"Point(Lat: {self.latitude}, Lon: {self.longitude})"
+        return f"Point(Lat: {self.latitude}, Lon: {self.longitude}, Ele: {self.elevation} m)"
 
 
 class GpsTrack(GeographicData):
@@ -61,7 +61,15 @@ class GpsTrack(GeographicData):
         # looping through the table and create a TrackingPoint for every row
         # row_index is  not used could be replaced with _ to indicate it's unused but we didnt learn this yet so i left it as is
         for row_index, current_data_row in gps_data_table.iterrows():
-            new_tracking_point = TrackingPoint(latitude = current_data_row['lat'], longitude = current_data_row['lon'])
+            new_tracking_point = TrackingPoint(
+                latitude = current_data_row.get('lat', None),
+                longitude = current_data_row.get('lon', None),
+                elevation = current_data_row.get('ele', None),
+                temperature = current_data_row.get('temperature', None),
+                # convert the timestamp string to a pandas datetime object, cuz time sucks to handle manually
+                timestamp = pd.to_datetime(current_data_row.get('time')) if 'time' in current_data_row else None
+            )
+
             self.track_points.append(new_tracking_point)
 
 
@@ -71,21 +79,4 @@ class GpsTrack(GeographicData):
 
 
 if __name__ == '__main__':
-    file_path = Path(__file__).parent.parent.parent / 'data' / 'final_project_input_data.csv'
-    
-    try:
-        my_first_gps_track = GpsTrack(
-            dataset_name = "Final Project Main Route",
-            csv_file_path = file_path
-        )
-        
-        # Print info about the loaded track.
-        print(f"Track: {my_first_gps_track.dataset_name}")
-        print(f"Total points: {my_first_gps_track.get_point_count()}")
-        
-        if my_first_gps_track.get_point_count() > 0:
-            print(f"Start: {my_first_gps_track.track_points[0]}")
-            print(f"End: {my_first_gps_track.track_points[-1]}")
-
-    except Exception as error_message:
-        print(f"Error: {error_message}")
+    pass
