@@ -1,4 +1,4 @@
-import battery_pack as bp
+from src.e_bike_homework import battery_pack as bp
 import logging
 
 logger = logging.getLogger(__name__)

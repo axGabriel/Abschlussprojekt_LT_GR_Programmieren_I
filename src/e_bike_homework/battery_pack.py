@@ -1,4 +1,4 @@
-import example_utils as utils
+from src.e_bike_homework import example_utils as utils
 import logging
 
 logger = logging.getLogger(__name__)

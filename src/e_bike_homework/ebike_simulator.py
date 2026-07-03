@@ -1,7 +1,7 @@
-import battery_pack as bp
-import motor
-import ebike_model
-import plotting_utils as plot
+from src.e_bike_homework import battery_pack as bp
+from src.e_bike_homework import motor
+from src.e_bike_homework import ebike_model
+from src.e_bike_homework import plotting_utils as plot
 import logging
 
 logger = logging.getLogger(__name__)

@@ -102,7 +102,7 @@ class TrackCalculator():
             return 0.0
 
         start_time = track_points[0].timestamp
-        end_time   = track_points[-1].timestamp
+        end_time = track_points[-1].timestamp
 
         if start_time is None or end_time is None:
             return 0.0
@@ -117,7 +117,7 @@ class TrackCalculator():
         Returns 0.0 if total time is zero or timestamps are missing.
         """
         total_distance_km = self.calculate_total_distance()
-        total_time_s      = self.calculate_total_time()
+        total_time_s = self.calculate_total_time()
 
         if total_time_s <= 0:
             return 0.0
@@ -172,6 +172,220 @@ class TrackCalculator():
         max_speed_kmh = float(np.max(segment_speeds_kmh))
 
         return max_speed_kmh
-    
+
+    def _calculate_segment_distances_m(self):
+        """
+        Internal helper: returns a numpy array of Haversine distances in meters
+        for each pair of track points.
+        Returns an empty array if fewer than 2 points exist.
+        """
+        earth_radius_m = 6_371_000.0
+        track_points = self.gps_track.track_points
+
+        if len(track_points) < 2:
+            return np.array([])
+
+        lat_rad = np.radians(np.array([p.latitude  for p in track_points]))
+        lon_rad = np.radians(np.array([p.longitude for p in track_points]))
+
+        diff_lat = np.diff(lat_rad)
+        diff_lon = np.diff(lon_rad)
+
+        a = np.sin(diff_lat / 2)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(diff_lon / 2)**2
+        c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+        return earth_radius_m * c
+
+    def _calculate_segment_times_s(self):
+        """
+        Internal helper: returns a numpy array of time differences in seconds
+        for each pair of track points.
+        Returns None if any timestamp is missing.
+        """
+        track_points = self.gps_track.track_points
+        timestamps = [p.timestamp for p in track_points]
+
+        if any(t is None for t in timestamps):
+            return None
+
+        return np.array([
+            (timestamps[i + 1] - timestamps[i]).total_seconds()
+            for i in range(len(timestamps) - 1)
+        ])
+
+    def calculate_speed_profile(self):
+        """
+        Calculates the speed for each GPS segment in m/s.
+        """
+        distances_m = self._calculate_segment_distances_m()
+        time_diffs_s = self._calculate_segment_times_s()
+
+        if time_diffs_s is None or len(distances_m) == 0:
+            return []
+
+        # avoid division by zero: segments with del_t=0 get speed 0
+        valid = time_diffs_s > 0
+        speeds = np.zeros(len(distances_m))
+        speeds[valid] = distances_m[valid] / time_diffs_s[valid]
+
+        return speeds.tolist()
+
+    def calculate_acceleration_profile(self):
+        """
+        Calculates the acceleration for each GPS segment in m/s^2.
+        """
+        speeds = self.calculate_speed_profile()
+        time_diffs_s = self._calculate_segment_times_s()
+
+        if not speeds or time_diffs_s is None:
+            return []
+
+        speeds_arr = np.array(speeds)
+        # acceleration between segment i and i+1
+        # first segment: no speed  a = 0
+        accelerations = np.zeros(len(speeds_arr))
+        del_t = time_diffs_s[1:]    # time of segments 1..n-1
+        del_v = np.diff(speeds_arr) # speed change between segments
+
+        valid = del_t > 0
+        accelerations[1:][valid] = del_v[valid] / del_t[valid]
+
+        return accelerations.tolist()
+
+    def calculate_slope_profile(self):
+        """
+        Calculates the slope angle for each GPS segment in radians.
+        """
+        track_points = self.gps_track.track_points
+
+        if len(track_points) < 2:
+            return []
+
+        elevations = [p.elevation for p in track_points]
+        if any(e is None for e in elevations):
+            return []
+
+        distances_m = self._calculate_segment_distances_m()
+        if len(distances_m) == 0:
+            return []
+
+        delta_h = np.diff(np.array(elevations, dtype=float))
+
+        # avoid division by zero for zero-length horizontal segments
+        slopes = np.zeros(len(distances_m))
+        valid = distances_m > 0
+        slopes[valid] = np.arctan(delta_h[valid] / distances_m[valid])
+
+        return slopes.tolist()
+
+    def calculate_power_profile(
+        self,
+        mass_rider_kg: float = 70.0,
+        mass_bike_kg: float  = 10.0,
+        cw_A_m2: float = 0.5625,
+        rho_air: float = 1.225,
+    ):
+        """
+        Calculates the required drive power for each GPS segment in Watts.
+        """
+        speeds = self.calculate_speed_profile()
+        accelerations = self.calculate_acceleration_profile()
+        slopes = self.calculate_slope_profile()
+
+        if not speeds or not accelerations or not slopes:
+            return []
+
+        g = 9.81 # ca. 10 :)
+        m_total = mass_rider_kg + mass_bike_kg
+
+        v = np.array(speeds)
+        a = np.array(accelerations)
+        phi = np.array(slopes)
+
+        F_inertia = m_total * a
+        F_slope = m_total * g * np.sin(phi)
+        F_drag = 0.5 * rho_air * cw_A_m2 * v**2
+
+        F_total = F_inertia + F_slope + F_drag
+        P = F_total * v  # W
+
+        return P.tolist()
+
+    def calculate_torque_profile(
+        self,
+        wheel_diameter_inch: float = 27.0, # Not in meters because bike wheels are usually specified in inches
+        mass_rider_kg: float = 70.0,
+        mass_bike_kg: float = 10.0,
+        cw_A_m2: float = 0.5625,
+        rho_air: float = 1.225,
+    ):
+        """
+        Calculates the drive torque at the wheel for each GPS segment in Nm.
+        Only one wheel is driven (hub motor).
+        """
+        speeds = self.calculate_speed_profile()
+        accelerations = self.calculate_acceleration_profile()
+        slopes = self.calculate_slope_profile()
+
+        if not speeds or not accelerations or not slopes:
+            return []
+
+        g = 9.81
+        m_total = mass_rider_kg + mass_bike_kg
+        # Raddurchmesser in Zoll (inch) -> Radius in Meter umrechnen (1 inch = 0.0254 m)
+        r_wheel = (wheel_diameter_inch * 0.0254) / 2.0
+
+        v = np.array(speeds)
+        a = np.array(accelerations)
+        phi = np.array(slopes)
+
+        F_inertia = m_total * a
+        F_slope = m_total * g * np.sin(phi)
+        F_drag = 0.5 * rho_air * cw_A_m2 * v**2
+
+        F_total = F_inertia + F_slope + F_drag
+        T = F_total * r_wheel  # Nm
+
+        return T.tolist()
+
+    def calculate_motor_current_profile(
+        self,
+        motor_constant_NmA: float = 1.5,
+        wheel_diameter_inch: float = 27.0,
+        mass_rider_kg: float = 70.0,
+        mass_bike_kg: float = 10.0,
+        cw_A_m2: float = 0.5625,
+        rho_air: float = 1.225,
+    ):
+        """
+        Calculates the motor current for each GPS segment in Amperes.
+        """
+        if motor_constant_NmA <= 0:
+            raise ValueError("Motor constant must be positive.")
+
+        torques = self.calculate_torque_profile(
+            wheel_diameter_inch = wheel_diameter_inch,
+            mass_rider_kg = mass_rider_kg,
+            mass_bike_kg = mass_bike_kg,
+            cw_A_m2 = cw_A_m2,
+            rho_air = rho_air,
+        )
+
+        if not torques:
+            return []
+
+        currents = np.array(torques) / motor_constant_NmA
+        return currents.tolist()
+
+    def calculate_segment_durations(self):
+        """
+        Returns the time duration in seconds for each GPS segment.
+        """
+        time_diffs_s = self._calculate_segment_times_s()
+        if time_diffs_s is None:
+            return []
+        return time_diffs_s.tolist()
+
+
 if __name__ == '__main__':
     pass
