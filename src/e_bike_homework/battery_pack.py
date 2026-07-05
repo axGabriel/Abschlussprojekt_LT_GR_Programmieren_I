@@ -1,5 +1,6 @@
 from src.e_bike_homework import example_utils as utils
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 class BatteryPack:
@@ -72,6 +73,26 @@ class LiPoBatteryPack(BatteryPack):
         """Return the current voltage of the battery"""
         return (self.Vmin + (self.soc**0.3) * (self.Vmax - self.Vmin)) - (self.internal_resistance_mOhm / 1000) * current
 
+class NmcBatteryPack(BatteryPack):
+    """Nickel mangan coblt battery pack, inherrits from BatteryPack class"""
+    # charakteristic curve from task description
+    _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30,
+                  0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
+    _ocv_table = _ocv_table = [32.00, 32.61, 33.17, 33.85, 34.24, 34.66, 35.39, 35.65,
+                  36.65, 37.64, 38.91, 40.14, 41.08, 42.00]
+    
+    # interpolate voltage between table values
+    def voltage(self, current: float = 0.0) -> float:
+        """calculates the act voltage of the NMC Battery Pack"""
+        ocv = np.interp(self.soc, self._soc_table, self._ocv_table)
+
+        # calculate voltage loss via internal resistor
+
+        terminal_voltage = ocv - (self.internal_resistance_mOhm / 1000) * current
+        return terminal_voltage
+    
+  
+
 class ColdWeatherBattery(BatteryPack):
     def apply_current(self, current: float, duration: float) -> None:
         """Modify the SoC based on the applied current & duration"""
@@ -89,3 +110,4 @@ class ColdWeatherBattery(BatteryPack):
             logger.info("Akku voll")
         else:
             self.soc = new_soc
+
