@@ -17,6 +17,7 @@ class EBikeSimulator:
           self.voltageValues = []
           self.speedValues = [vehicle.v]
           self.distanceValues = [vehicle.s]
+          self.socValues = [battery.soc]
 
     def simulate(self, power: list[int], duration: list[float]) -> None:
         if len(power) != len(duration):
@@ -32,18 +33,31 @@ class EBikeSimulator:
             if duration[i] < 0:
                 logger.error(f"Duration value at index {i} is negative: {duration[i]}")
                 raise ValueError("Duration values cannot be negative.")
-            act_current = self.motor.get_current_draw(power[i], act_voltage)
-            self.battery.apply_current(act_current, duration[i])
-            act_voltage = self.battery.voltage(act_current)
-            
-            self.vehicle.step(power[i], duration[i])
+
+            if self.battery.is_empty():
+                # Akku ist leer → kein Strom, keine Motorleistung
+                act_current = 0.0
+                self.vehicle.step(0, duration[i])
+            else:
+                try:
+                    act_current = self.motor.get_current_draw(power[i], act_voltage)
+                    self.battery.apply_current(act_current, duration[i])
+                    act_voltage = self.battery.voltage(act_current)
+                    self.vehicle.step(power[i], duration[i])
+                except RuntimeError:
+                    # Akku wurde in diesem Schritt leer
+                    act_current = 0.0
+                    act_voltage = self.battery.voltage(0.0)
+                    logger.warning(f"Akku leer ab Segment {i}")
 
             self.currentValues.append(act_current)
             self.voltageValues.append(act_voltage)
             self.speedValues.append(self.vehicle.v)
             self.distanceValues.append(self.vehicle.s)
-                
+            self.socValues.append(self.battery.soc)
+
         logger.info("Finished")
+        
 
 
 if __name__ == "__main__":
