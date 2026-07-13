@@ -12,6 +12,9 @@ from src.e_bike_homework.ebike_simulator import EBikeSimulator
 def main():
     data_path = Path("data/final_project_input_data.csv")
     plot_path = Path("results/track_plot.png")
+    elevation_plot_path = Path("results/elevation_profile.png")
+    speed_plot_path = Path("results/speed_profile.png")
+    soc_comparison_path = Path("results/soc_comparison.png")
 
     try:
         # Load data from CSV into GpsTrack object
@@ -26,6 +29,12 @@ def main():
         # Plot the track using TrackPlotter
         plotter = TrackPlotter(my_track)
         plotter.plot_track_path(plot_path)
+
+        # Plot the hight and speed proflile using track plotter
+        plotter.plot_elevation_profile(elevation_plot_path)
+        plotter.plot_speed_profile(calculator, speed_plot_path)
+
+
 
         # calculate Profiles from GPS data
         power_profile = calculator.calculate_power_profile()
@@ -47,13 +56,9 @@ def main():
         sim_lipo = EBikeSimulator(motor_lipo, battery_lipo, vehicle_lipo)
             
         # start simulation with error handling
-        try:
-            sim_lipo.simulate(power_profile, durations)
-            print(f"Finale Akku-Ladung: {battery_lipo.soc * 100:.1f}%")
-            print(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
-        except RuntimeError as e:
-            print(f"Simulation abgebrochen: {e}")
-            print(f"Akku-Ladung bei Abbruch: {battery_lipo.soc * 100:.1f}%")
+        sim_lipo.simulate(power_profile, durations)
+        print(f"Finale Akku-Ladung: {battery_lipo.soc * 100:.1f}%")
+        print(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
 
 
         # Simulate Nmc battery
@@ -72,13 +77,13 @@ def main():
         sim_nmc = EBikeSimulator(motor_nmc, battery_nmc, vehicle_nmc)
 
         # start simulation with error handling
-        try:
-            sim_nmc.simulate(power_profile, durations)
-            print(f"Finale Akku-Ladung: {battery_nmc.soc * 100:.1f}%")
-        except RuntimeError as e:
-            print(f"Simulation abgebrochen: {e}")
-            print(f"Akku-Ladung bei Abbruch: {battery_nmc.soc * 100:.1f}%")
+        sim_nmc.simulate(power_profile, durations)
+        print(f"Finale Akku-Ladung: {battery_nmc.soc * 100:.1f}%")
+        print(f"Endgeschwindigkeit: {vehicle_nmc.v:.2f} m/s")
 
+
+        # save comparison plot 
+        plotter.plot_soc_comparison(sim_lipo, sim_nmc, durations, soc_comparison_path)
 
     except Exception as error:
         print(f"An error occurred: {error}")
