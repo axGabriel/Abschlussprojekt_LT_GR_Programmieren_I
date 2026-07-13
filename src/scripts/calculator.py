@@ -311,6 +311,21 @@ class TrackCalculator():
 
         return P.tolist()
 
+    def calculate_max_power(
+        self,
+        mass_rider_kg: float = 70.0,
+        mass_bike_kg: float = 10.0,
+        cw_A_m2: float = 0.5625,
+        rho_air: float = 1.225,
+    ):
+        """
+        Calculates the maximum required power in Watts.
+        """
+        power_profile = self.calculate_power_profile(mass_rider_kg, mass_bike_kg, cw_A_m2, rho_air)
+        if not power_profile:
+            return 0.0
+        return float(np.max(power_profile))
+
     def calculate_torque_profile(
         self,
         wheel_diameter_inch: float = 27.0, # Not in meters because bike wheels are usually specified in inches

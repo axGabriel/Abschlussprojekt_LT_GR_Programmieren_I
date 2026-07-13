@@ -16,4 +16,8 @@ class Motor():
         if voltage <= 0.0:
             logger.error(f"Voltage must be greater than 0, got {voltage}")
             raise ValueError("Voltage must be greater than 0 to calculate current draw.")
-        return power / (voltage * self.efficiency)
+            
+        if power >= 0.0:
+            return power / (voltage * self.efficiency)
+        else:
+            return (power * self.efficiency) / voltage

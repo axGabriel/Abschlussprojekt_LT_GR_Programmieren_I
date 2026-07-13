@@ -20,12 +20,10 @@ def main():
         # Load data from CSV into GpsTrack object
         my_track = GpsTrack("Hauptroute", data_path)
 
-        # Make calcualtions unsing TrackCalculator
+        # Make calculations using TrackCalculator
         calculator = TrackCalculator(my_track)
         distance = calculator.calculate_total_distance()
-        print(f"Total distance of the track: {distance:.2f} km")
 
-        
         # Plot the track using TrackPlotter
         plotter = TrackPlotter(my_track)
         plotter.plot_track_path(plot_path)
@@ -34,11 +32,11 @@ def main():
         plotter.plot_elevation_profile(elevation_plot_path)
         plotter.plot_speed_profile(calculator, speed_plot_path)
 
-
-
         # calculate Profiles from GPS data
         power_profile = calculator.calculate_power_profile()
         durations = calculator.calculate_segment_durations()
+        slopes = calculator.calculate_slope_profile()
+        speeds = calculator.calculate_speed_profile()
 
         # Simulate LiPo battery
         print("---LiPo-Battery Simulation---")
@@ -56,7 +54,7 @@ def main():
         sim_lipo = EBikeSimulator(motor_lipo, battery_lipo, vehicle_lipo)
             
         # start simulation with error handling
-        sim_lipo.simulate(power_profile, durations)
+        sim_lipo.simulate(power_profile, durations, slopes, speeds)
         print(f"Finale Akku-Ladung: {battery_lipo.soc * 100:.1f}%")
         print(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
 
@@ -77,7 +75,7 @@ def main():
         sim_nmc = EBikeSimulator(motor_nmc, battery_nmc, vehicle_nmc)
 
         # start simulation with error handling
-        sim_nmc.simulate(power_profile, durations)
+        sim_nmc.simulate(power_profile, durations, slopes, speeds)
         print(f"Finale Akku-Ladung: {battery_nmc.soc * 100:.1f}%")
         print(f"Endgeschwindigkeit: {vehicle_nmc.v:.2f} m/s")
 
