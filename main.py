@@ -37,6 +37,7 @@ def main():
         durations = calculator.calculate_segment_durations()
         slopes = calculator.calculate_slope_profile()
         speeds = calculator.calculate_speed_profile()
+        rhos = calculator.calculate_air_density_profile()
 
         # Simulate LiPo battery
         print("---LiPo-Battery Simulation---")
@@ -54,7 +55,7 @@ def main():
         sim_lipo = EBikeSimulator(motor_lipo, battery_lipo, vehicle_lipo)
             
         # start simulation with error handling
-        sim_lipo.simulate(power_profile, durations, slopes, speeds)
+        sim_lipo.simulate(power_profile, durations, slopes, speeds, rhos)
         print(f"Finale Akku-Ladung: {battery_lipo.soc * 100:.1f}%")
         print(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
 
@@ -75,7 +76,7 @@ def main():
         sim_nmc = EBikeSimulator(motor_nmc, battery_nmc, vehicle_nmc)
 
         # start simulation with error handling
-        sim_nmc.simulate(power_profile, durations, slopes, speeds)
+        sim_nmc.simulate(power_profile, durations, slopes, speeds, rhos)
         print(f"Finale Akku-Ladung: {battery_nmc.soc * 100:.1f}%")
         print(f"Endgeschwindigkeit: {vehicle_nmc.v:.2f} m/s")
 

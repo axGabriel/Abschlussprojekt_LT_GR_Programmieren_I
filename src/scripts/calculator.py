@@ -278,12 +278,45 @@ class TrackCalculator():
 
         return slopes.tolist()
 
+    def calculate_air_density_profile(self):
+        """
+        Uses elevation and temperature from the GPS data to get air density.
+        Returns a list of air density values in kg/m^3.
+        """
+        track_points = self.gps_track.track_points
+        if not track_points:
+            return []
+        
+        # define constants for the barometric formula
+        p0 = 101325.0 
+        T0 = 288.15    
+        g = 9.81
+        L = 0.0065     
+        R_u = 8.31446
+        M = 0.0289652
+        R_spec = R_u / M
+        
+        exponent = (g * M) / (R_u * L)
+        
+        densities = []
+        for p in track_points:
+            h = p.elevation if p.elevation is not None else 0.0
+            temp_c = p.temperature if p.temperature is not None else 20.0
+            
+            T_kelvin = temp_c + 273.15
+            p_h = p0 * (1 - (L * h) / T0) ** exponent
+            rho = p_h / (R_spec * T_kelvin)
+
+            densities.append(rho)
+            
+        return densities
+
     def calculate_power_profile(
         self,
         mass_rider_kg: float = 70.0,
         mass_bike_kg: float  = 10.0,
         cw_A_m2: float = 0.5625,
-        rho_air: float = 1.225,
+        c_r: float = 0.015,
     ):
         """
         Calculates the required drive power for each GPS segment in Watts.
@@ -291,6 +324,7 @@ class TrackCalculator():
         speeds = self.calculate_speed_profile()
         accelerations = self.calculate_acceleration_profile()
         slopes = self.calculate_slope_profile()
+        densities = self.calculate_air_density_profile()
 
         if not speeds or not accelerations or not slopes:
             return []
@@ -301,12 +335,18 @@ class TrackCalculator():
         v = np.array(speeds)
         a = np.array(accelerations)
         phi = np.array(slopes)
+        
+        if densities and len(densities) > len(speeds):
+            rho_air = np.array(densities[:-1])
+        else:
+            rho_air = 1.225
 
         F_inertia = m_total * a
         F_slope = m_total * g * np.sin(phi)
         F_drag = 0.5 * rho_air * cw_A_m2 * v**2
+        F_rolling = c_r * m_total * g * np.cos(phi)
 
-        F_total = F_inertia + F_slope + F_drag
+        F_total = F_inertia + F_slope + F_drag + F_rolling
         P = F_total * v  # W
 
         return P.tolist()
@@ -316,12 +356,12 @@ class TrackCalculator():
         mass_rider_kg: float = 70.0,
         mass_bike_kg: float = 10.0,
         cw_A_m2: float = 0.5625,
-        rho_air: float = 1.225,
+        c_r: float = 0.015,
     ):
         """
         Calculates the maximum required power in Watts.
         """
-        power_profile = self.calculate_power_profile(mass_rider_kg, mass_bike_kg, cw_A_m2, rho_air)
+        power_profile = self.calculate_power_profile(mass_rider_kg, mass_bike_kg, cw_A_m2, c_r)
         if not power_profile:
             return 0.0
         return float(np.max(power_profile))
@@ -332,7 +372,7 @@ class TrackCalculator():
         mass_rider_kg: float = 70.0,
         mass_bike_kg: float = 10.0,
         cw_A_m2: float = 0.5625,
-        rho_air: float = 1.225,
+        c_r: float = 0.015,
     ):
         """
         Calculates the drive torque at the wheel for each GPS segment in Nm.
@@ -341,6 +381,7 @@ class TrackCalculator():
         speeds = self.calculate_speed_profile()
         accelerations = self.calculate_acceleration_profile()
         slopes = self.calculate_slope_profile()
+        densities = self.calculate_air_density_profile()
 
         if not speeds or not accelerations or not slopes:
             return []
@@ -353,12 +394,18 @@ class TrackCalculator():
         v = np.array(speeds)
         a = np.array(accelerations)
         phi = np.array(slopes)
+        
+        if densities and len(densities) > len(speeds):
+            rho_air = np.array(densities[:-1])
+        else:
+            rho_air = 1.225
 
         F_inertia = m_total * a
         F_slope = m_total * g * np.sin(phi)
         F_drag = 0.5 * rho_air * cw_A_m2 * v**2
+        F_rolling = c_r * m_total * g * np.cos(phi)
 
-        F_total = F_inertia + F_slope + F_drag
+        F_total = F_inertia + F_slope + F_drag + F_rolling
         T = F_total * r_wheel  # Nm
 
         return T.tolist()
@@ -370,7 +417,7 @@ class TrackCalculator():
         mass_rider_kg: float = 70.0,
         mass_bike_kg: float = 10.0,
         cw_A_m2: float = 0.5625,
-        rho_air: float = 1.225,
+        c_r: float = 0.015,
     ):
         """
         Calculates the motor current for each GPS segment in Amperes.
@@ -383,7 +430,7 @@ class TrackCalculator():
             mass_rider_kg = mass_rider_kg,
             mass_bike_kg = mass_bike_kg,
             cw_A_m2 = cw_A_m2,
-            rho_air = rho_air,
+            c_r = c_r,
         )
 
         if not torques:

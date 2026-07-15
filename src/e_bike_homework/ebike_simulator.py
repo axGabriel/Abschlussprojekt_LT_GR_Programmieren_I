@@ -19,10 +19,17 @@ class EBikeSimulator:
           self.distanceValues = [vehicle.s]
           self.socValues = [battery.soc]
 
-    def simulate(self, power: list[int], duration: list[float]) -> None:
+    def simulate(self, power: list[float], duration: list[float], slopes: list[float] = None, speeds: list[float] = None, rhos: list[float] = None) -> None:
         if len(power) != len(duration):
             logger.error("Power and duration profiles must have the same length.")
             raise ValueError("Power and duration profiles must have the same length.")
+            
+        if slopes is None:
+            slopes = [0.0] * len(power)
+        if speeds is None:
+            speeds = [0.0] * len(power)
+        if rhos is None:
+            rhos = [1.225] * len(power)
             
         logger.info("Starting simulation")
 
@@ -37,13 +44,13 @@ class EBikeSimulator:
             if self.battery.is_empty():
                 # Akku ist leer → kein Strom, keine Motorleistung
                 act_current = 0.0
-                self.vehicle.step(0, duration[i])
+                self.vehicle.step(0.0, duration[i], slopes[i], speeds[i], rho=rhos[i])
             else:
                 try:
                     act_current = self.motor.get_current_draw(power[i], act_voltage)
                     self.battery.apply_current(act_current, duration[i])
                     act_voltage = self.battery.voltage(act_current)
-                    self.vehicle.step(power[i], duration[i])
+                    self.vehicle.step(power[i], duration[i], slopes[i], speeds[i], rho=rhos[i])
                 except RuntimeError:
                     # Akku wurde in diesem Schritt leer
                     act_current = 0.0
