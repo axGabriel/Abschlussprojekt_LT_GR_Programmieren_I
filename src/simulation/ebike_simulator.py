@@ -1,7 +1,7 @@
-from src.e_bike_homework import battery_pack as bp
-from src.e_bike_homework import motor
-from src.e_bike_homework import ebike_model
-from src.e_bike_homework import plotting_utils as plot
+from Abschlussprojekt_LT_GR_Programmieren_I.src.core import battery_pack as bp
+from Abschlussprojekt_LT_GR_Programmieren_I.src.core import motor
+from Abschlussprojekt_LT_GR_Programmieren_I.src.core import ebike_model
+from Abschlussprojekt_LT_GR_Programmieren_I.src.utils import plotting_utils as plot
 import logging
 
 logger = logging.getLogger(__name__)

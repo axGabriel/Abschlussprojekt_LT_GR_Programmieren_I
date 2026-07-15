@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from src.scripts.calculator import TrackCalculator
+from Abschlussprojekt_LT_GR_Programmieren_I.src.gps.calculator import TrackCalculator
 
 class TrackPlotter:
     """
@@ -107,10 +107,6 @@ class TrackPlotter:
         plt.savefig(output_path)
         plt.close()
         print(f"SoC-Vergleich gespeichert unter: {output_path}")
-
-
-
-
 
     
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from src.e_bike_homework import example_utils as utils
+from Abschlussprojekt_LT_GR_Programmieren_I.src.utils import example_utils as utils
 import logging
 import numpy as np
 
