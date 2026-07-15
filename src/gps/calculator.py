@@ -1,5 +1,5 @@
 import numpy as np
-
+from src import config as cfg
 class TrackCalculator():
     """
     Class to perform calculations on GPS tracks.
@@ -447,6 +447,20 @@ class TrackCalculator():
         if time_diffs_s is None:
             return []
         return time_diffs_s.tolist()
+    
+    # rho air depends on altitude, temperature, and pressure
+    # might be moved to calculator.py
+    def calculate_dynamic_rho_air(self, altitude_m, temperature_celsius):
+        """ 
+        Calculate the air density at a given altitude and temperature using the barometric formula.
+        """
+        #pressure in pascal at given altitude
+        pressure_pa = cfg.P0_PASCAL * (1 - cfg.L_TEMP_LAPSE_RATE * altitude_m / cfg.T0_KELVIN) ** (cfg.GRAVITATION_EARTH * cfg.M_MOLAR_MASS_AIR / (cfg.R_U_IDEAL_GAS * cfg.L_TEMP_LAPSE_RATE))
+        temperature_kelvin = temperature_celsius + 273.15
+
+        return pressure_pa / (cfg.R_U_IDEAL_GAS / cfg.M_MOLAR_MASS_AIR * temperature_kelvin)
+
+
 
 
 if __name__ == '__main__':

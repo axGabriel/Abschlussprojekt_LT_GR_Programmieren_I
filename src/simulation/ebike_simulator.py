@@ -2,6 +2,7 @@ from Abschlussprojekt_LT_GR_Programmieren_I.src.core import battery_pack as bp
 from Abschlussprojekt_LT_GR_Programmieren_I.src.core import motor
 from Abschlussprojekt_LT_GR_Programmieren_I.src.core import ebike_model
 from Abschlussprojekt_LT_GR_Programmieren_I.src.utils import plotting_utils as plot
+from src import config as cfg
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ class EBikeSimulator:
         if speeds is None:
             speeds = [0.0] * len(power)
         if rhos is None:
-            rhos = [1.225] * len(power)
+            rhos = [cfg.RHO_AIR] * len(power)
             
         logger.info("Starting simulation")
 

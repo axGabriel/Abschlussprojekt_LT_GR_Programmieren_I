@@ -1,5 +1,6 @@
 import logging
 import math
+from src import config as cfg
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +17,12 @@ class VehicleModel:
         self.s = initial_s
         logger.info(f"VehicleModel initialized with mass {self.mass}kg, initial_v {self.v}m/s")
 
-    def step(self, power: float, duration: float, slope: float = 0.0, v_gps: float = 0.0, cw_A: float = 0.5625, rho: float = 1.225) -> None:
+    def step(self, power: float, duration: float, slope: float = 0.0, v_gps: float = 0.0, cw_A: float = 0.5625, rho: float = cfg.RHO_AIR) -> None:
         if duration < 0:
             logger.error(f"Duration cannot be negative, got {duration}")
             raise ValueError("Duration cannot be negative.")
         
-        F_slope = self.mass * 9.81 * math.sin(slope)
+        F_slope = self.mass * cfg.GRAVITATION_EARTH * math.sin(slope)
         F_drag = 0.5 * rho * cw_A * (v_gps ** 2)
         
         # motor force based on actual vehicle speed
