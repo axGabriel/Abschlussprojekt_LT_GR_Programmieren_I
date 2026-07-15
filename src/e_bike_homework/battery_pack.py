@@ -70,10 +70,8 @@ class BatteryPack:
 class LiPoBatteryPack(BatteryPack):
     """Lithium polymer battery pack, inherits from BatteryPack class"""
     # characteristic curve from task description (page 20)
-    _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30,
-                  0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
-    _ocv_table = [32.00, 35.87, 36.85, 37.56, 37.87, 38.28, 38.81, 39.05,
-                  39.55, 40.27, 40.70, 41.16, 41.65, 42.00]
+    _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30, 0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
+    _ocv_table = [32.00, 35.87, 36.85, 37.56, 37.87, 38.28, 38.81, 39.05, 39.55, 40.27, 40.70, 41.16, 41.65, 42.00]
     
     def voltage(self, current: float = 0.0) -> float:
         """Return the current voltage of the battery"""
@@ -86,10 +84,8 @@ class LiPoBatteryPack(BatteryPack):
 class NmcBatteryPack(BatteryPack):
     """Nickel mangan coblt battery pack, inherrits from BatteryPack class"""
     # charakteristic curve from task description
-    _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30,
-                  0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
-    _ocv_table = [32.00, 32.61, 33.17, 33.85, 34.24, 34.66, 35.39, 35.65,
-                  36.65, 37.64, 38.91, 40.14, 41.08, 42.00]
+    _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30, 0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
+    _ocv_table = [32.00, 32.61, 33.17, 33.85, 34.24, 34.66, 35.39, 35.65, 36.65, 37.64, 38.91, 40.14, 41.08, 42.00]
     
     # interpolate voltage between table values
     def voltage(self, current: float = 0.0) -> float:
@@ -99,8 +95,6 @@ class NmcBatteryPack(BatteryPack):
         #calc voltage loss via internal res.
 
         return ocv - (self.internal_resistance_mOhm / 1000) * current
-        
-  
 
 class ColdWeatherBattery(BatteryPack):
     def apply_current(self, current: float, duration: float) -> None:
@@ -119,4 +113,3 @@ class ColdWeatherBattery(BatteryPack):
             logger.info("Akku voll")
         else:
             self.soc = new_soc
-
