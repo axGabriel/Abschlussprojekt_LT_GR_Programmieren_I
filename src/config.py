@@ -18,6 +18,7 @@ class AtmosphereConstants:
     R_U_IDEAL_GAS: float = 8.31446
     M_MOLAR_MASS_AIR: float = 0.0289652
 
+# will be used if there arent any other settings provided
 @dataclass
 class SimulationSettings:
     mass_rider_kg: float = 70.0

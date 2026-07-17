@@ -8,6 +8,7 @@ from src.core.battery_pack import NmcBatteryPack
 from src.core.motor import Motor
 from src.core.ebike_model import VehicleModel
 from src.simulation.ebike_simulator import EBikeSimulator
+from src import config as cfg
 
 def main():
     data_path = Path("data/final_project_input_data.csv")
@@ -51,7 +52,7 @@ def main():
         
         # simulation
         motor_lipo = Motor(efficiency=0.85)
-        vehicle_lipo = VehicleModel(mass=80.0, initial_v=0.1)
+        vehicle_lipo = VehicleModel(mass=cfg.SETTINGS.mass_rider_kg + cfg.SETTINGS.mass_bike_kg, initial_v=0.1)
         sim_lipo = EBikeSimulator(motor_lipo, battery_lipo, vehicle_lipo)
             
         # start simulation with error handling
@@ -72,7 +73,7 @@ def main():
 
         # simulation
         motor_nmc = Motor(efficiency=0.85)
-        vehicle_nmc = VehicleModel(mass=80.0, initial_v=0.1)
+        vehicle_nmc = VehicleModel(mass=cfg.SETTINGS.mass_rider_kg + cfg.SETTINGS.mass_bike_kg, initial_v=0.1)
         sim_nmc = EBikeSimulator(motor_nmc, battery_nmc, vehicle_nmc)
 
         # start simulation with error handling

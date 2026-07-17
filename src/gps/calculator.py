@@ -21,8 +21,8 @@ class TrackCalculator():
         if len(track_points) < 2:
             return 0.0
 
-        lat_rad = np.radians([p.lat for p in track_points])
-        lon_rad = np.radians([p.lon for p in track_points])
+        lat_rad = np.radians([p.latitude for p in track_points])
+        lon_rad = np.radians([p.longitude for p in track_points])
 
         # calc differences
         diff_lat = np.diff(lat_rad)
@@ -128,6 +128,21 @@ class TrackCalculator():
         Uses Haversine distance divided by the time difference for each segment.
         Returns 0.0 if timestamps are missing or fewer than 2 points exist.
         """
+        track_points = self.gps_track.track_points
+
+        if len(track_points) < 2:
+            return 0.0
+
+        latitudes  = np.array([p.latitude  for p in track_points])
+        longitudes = np.array([p.longitude for p in track_points])
+
+        # convert to radians
+        lat_rad = np.radians(latitudes)
+        lon_rad = np.radians(longitudes)
+
+        diff_lat = np.diff(lat_rad)
+        diff_lon = np.diff(lon_rad)
+
         a = np.sin(diff_lat / 2)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(diff_lon / 2)**2
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
         segment_distances_km = cfg.PHYSICS.EARTH_RADIUS_KM * c
@@ -157,6 +172,17 @@ class TrackCalculator():
         for each pair of track points.
         Returns an empty array if fewer than 2 points exist.
         """
+        track_points = self.gps_track.track_points
+
+        if len(track_points) < 2:
+            return np.array([])
+
+        lat_rad = np.radians(np.array([p.latitude  for p in track_points]))
+        lon_rad = np.radians(np.array([p.longitude for p in track_points]))
+
+        diff_lat = np.diff(lat_rad)
+        diff_lon = np.diff(lon_rad)
+
         a = np.sin(diff_lat / 2)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(diff_lon / 2)**2
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
 
