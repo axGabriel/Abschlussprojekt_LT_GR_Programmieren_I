@@ -30,7 +30,7 @@ class EBikeSimulator:
         if speeds is None:
             speeds = [0.0] * len(power)
         if rhos is None:
-            rhos = [cfg.RHO_AIR] * len(power)
+            rhos = [cfg.PHYSICS.RHO_AIR_SEA_LEVEL] * len(power)
             
         logger.info("Starting simulation")
 
@@ -69,21 +69,4 @@ class EBikeSimulator:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
-    power_profile_W = [115, 420, 150, -60, 38, 300, 0.0, 435, -75, 111]
-    duration_s = [300.0, 240.0, 90.0, 150.0, 120.0, 300.0, 60.0, 30.0, 120.0, 180.0]
-
-    #Normal battery pack
-    obj_battery = bp.BatteryPack(capacity_nom_Ah=10, initial_soc=0.7, Vmin=32.0, Vmax=42.0)
-    obj_motor = motor.Motor(0.5)
-    obj_vehicle = ebike_model.VehicleModel(mass=100.0, initial_v=0.1, initial_s=0.0)
-
-    sim_ebike = EBikeSimulator(obj_motor, obj_battery, obj_vehicle)
-    sim_ebike.simulate(power_profile_W, duration_s)
-
-    plot.plot_power_profile(power_profile_W, duration_s)
-    plot.plot_voltage_and_current_profile(sim_ebike.voltageValues, sim_ebike.currentValues, duration_s)
-    plot.plot_speed_and_distance_profile(sim_ebike.speedValues, sim_ebike.distanceValues, duration_s)
-
-    print(input("Bitte enter drücken"))
+    pass

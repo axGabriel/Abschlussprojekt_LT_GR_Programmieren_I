@@ -17,18 +17,12 @@ class TrackCalculator():
         using the Haversine formula for geographic coordinates.
         Returns 0.0 if there are fewer than 2 points.
         """
-        earth_radius_in_km = 6371.0
         track_points = self.gps_track.track_points
-
         if len(track_points) < 2:
             return 0.0
 
-        latitudes  = np.array([p.latitude  for p in track_points])
-        longitudes = np.array([p.longitude for p in track_points])
-
-        # convert to rad
-        lat_rad = np.radians(latitudes)
-        lon_rad = np.radians(longitudes)
+        lat_rad = np.radians([p.lat for p in track_points])
+        lon_rad = np.radians([p.lon for p in track_points])
 
         # calc differences
         diff_lat = np.diff(lat_rad)
@@ -38,7 +32,7 @@ class TrackCalculator():
         a = np.sin(diff_lat / 2)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(diff_lon / 2)**2
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
 
-        distances = earth_radius_in_km * c
+        distances = cfg.PHYSICS.EARTH_RADIUS_KM * c
 
         return float(np.sum(distances))
 
@@ -134,25 +128,9 @@ class TrackCalculator():
         Uses Haversine distance divided by the time difference for each segment.
         Returns 0.0 if timestamps are missing or fewer than 2 points exist.
         """
-        earth_radius_in_km = 6371.0
-        track_points = self.gps_track.track_points
-
-        if len(track_points) < 2:
-            return 0.0
-
-        latitudes  = np.array([p.latitude  for p in track_points])
-        longitudes = np.array([p.longitude for p in track_points])
-
-        # convert to radians
-        lat_rad = np.radians(latitudes)
-        lon_rad = np.radians(longitudes)
-
-        diff_lat = np.diff(lat_rad)
-        diff_lon = np.diff(lon_rad)
-
         a = np.sin(diff_lat / 2)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(diff_lon / 2)**2
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-        segment_distances_km = earth_radius_in_km * c
+        segment_distances_km = cfg.PHYSICS.EARTH_RADIUS_KM * c
 
         # calculate time differences between points in hours
         timestamps = [p.timestamp for p in track_points]
@@ -179,22 +157,10 @@ class TrackCalculator():
         for each pair of track points.
         Returns an empty array if fewer than 2 points exist.
         """
-        earth_radius_m = 6_371_000.0
-        track_points = self.gps_track.track_points
-
-        if len(track_points) < 2:
-            return np.array([])
-
-        lat_rad = np.radians(np.array([p.latitude  for p in track_points]))
-        lon_rad = np.radians(np.array([p.longitude for p in track_points]))
-
-        diff_lat = np.diff(lat_rad)
-        diff_lon = np.diff(lon_rad)
-
         a = np.sin(diff_lat / 2)**2 + np.cos(lat_rad[:-1]) * np.cos(lat_rad[1:]) * np.sin(diff_lon / 2)**2
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
 
-        return earth_radius_m * c
+        return cfg.PHYSICS.EARTH_RADIUS_M * c
 
     def _calculate_segment_times_s(self):
         """
@@ -287,16 +253,9 @@ class TrackCalculator():
         if not track_points:
             return []
         
-        # define constants for the barometric formula
-        p0 = 101325.0 
-        T0 = 288.15    
-        g = 9.81
-        L = 0.0065     
-        R_u = 8.31446
-        M = 0.0289652
-        R_spec = R_u / M
-        
-        exponent = (g * M) / (R_u * L)
+        # exponent for barometric formula
+        exponent = (cfg.PHYSICS.GRAVITY_EARTH * cfg.ATMOSPHERE.M_MOLAR_MASS_AIR) / (cfg.ATMOSPHERE.R_U_IDEAL_GAS * cfg.ATMOSPHERE.L_TEMP_LAPSE_RATE)
+        R_spec = cfg.ATMOSPHERE.R_U_IDEAL_GAS / cfg.ATMOSPHERE.M_MOLAR_MASS_AIR
         
         densities = []
         for p in track_points:
@@ -304,7 +263,7 @@ class TrackCalculator():
             temp_c = p.temperature if p.temperature is not None else 20.0
             
             T_kelvin = temp_c + 273.15
-            p_h = p0 * (1 - (L * h) / T0) ** exponent
+            p_h = cfg.ATMOSPHERE.P0_PASCAL * (1 - (cfg.ATMOSPHERE.L_TEMP_LAPSE_RATE * h) / cfg.ATMOSPHERE.T0_KELVIN) ** exponent
             rho = p_h / (R_spec * T_kelvin)
 
             densities.append(rho)
@@ -313,14 +272,19 @@ class TrackCalculator():
 
     def calculate_power_profile(
         self,
-        mass_rider_kg: float = 70.0,
-        mass_bike_kg: float  = 10.0,
-        cw_A_m2: float = 0.5625,
-        c_r: float = 0.015,
+        mass_rider_kg: float = None,
+        mass_bike_kg: float  = None,
+        cw_A_m2: float = None,
+        c_r: float = None,
     ):
         """
         Calculates the required drive power for each GPS segment in Watts.
         """
+        mass_rider_kg = mass_rider_kg if mass_rider_kg is not None else cfg.SETTINGS.mass_rider_kg
+        mass_bike_kg = mass_bike_kg if mass_bike_kg is not None else cfg.SETTINGS.mass_bike_kg
+        cw_A_m2 = cw_A_m2 if cw_A_m2 is not None else cfg.SETTINGS.cw_A_m2
+        c_r = c_r if c_r is not None else cfg.SETTINGS.c_r
+
         speeds = self.calculate_speed_profile()
         accelerations = self.calculate_acceleration_profile()
         slopes = self.calculate_slope_profile()
@@ -329,7 +293,6 @@ class TrackCalculator():
         if not speeds or not accelerations or not slopes:
             return []
 
-        g = 9.81 # ca. 10 :)
         m_total = mass_rider_kg + mass_bike_kg
 
         v = np.array(speeds)
@@ -339,12 +302,12 @@ class TrackCalculator():
         if densities and len(densities) > len(speeds):
             rho_air = np.array(densities[:-1])
         else:
-            rho_air = 1.225
+            rho_air = cfg.PHYSICS.RHO_AIR_SEA_LEVEL
 
         F_inertia = m_total * a
-        F_slope = m_total * g * np.sin(phi)
+        F_slope = m_total * cfg.PHYSICS.GRAVITY_EARTH * np.sin(phi)
         F_drag = 0.5 * rho_air * cw_A_m2 * v**2
-        F_rolling = c_r * m_total * g * np.cos(phi)
+        F_rolling = c_r * m_total * cfg.PHYSICS.GRAVITY_EARTH * np.cos(phi)
 
         F_total = F_inertia + F_slope + F_drag + F_rolling
         P = F_total * v  # W
@@ -353,14 +316,19 @@ class TrackCalculator():
 
     def calculate_max_power(
         self,
-        mass_rider_kg: float = 70.0,
-        mass_bike_kg: float = 10.0,
-        cw_A_m2: float = 0.5625,
-        c_r: float = 0.015,
+        mass_rider_kg: float = None,
+        mass_bike_kg: float = None,
+        cw_A_m2: float = None,
+        c_r: float = None,
     ):
         """
         Calculates the maximum required power in Watts.
         """
+        mass_rider_kg = mass_rider_kg if mass_rider_kg is not None else cfg.SETTINGS.mass_rider_kg
+        mass_bike_kg = mass_bike_kg if mass_bike_kg is not None else cfg.SETTINGS.mass_bike_kg
+        cw_A_m2 = cw_A_m2 if cw_A_m2 is not None else cfg.SETTINGS.cw_A_m2
+        c_r = c_r if c_r is not None else cfg.SETTINGS.c_r
+
         power_profile = self.calculate_power_profile(mass_rider_kg, mass_bike_kg, cw_A_m2, c_r)
         if not power_profile:
             return 0.0
@@ -368,16 +336,22 @@ class TrackCalculator():
 
     def calculate_torque_profile(
         self,
-        wheel_diameter_inch: float = 27.0, # Not in meters because bike wheels are usually specified in inches
-        mass_rider_kg: float = 70.0,
-        mass_bike_kg: float = 10.0,
-        cw_A_m2: float = 0.5625,
-        c_r: float = 0.015,
+        wheel_diameter_inch: float = None, # Not in meters because bike wheels are usually specified in inches
+        mass_rider_kg: float = None,
+        mass_bike_kg: float = None,
+        cw_A_m2: float = None,
+        c_r: float = None,
     ):
         """
         Calculates the drive torque at the wheel for each GPS segment in Nm.
         Only one wheel is driven (hub motor).
         """
+        wheel_diameter_inch = wheel_diameter_inch if wheel_diameter_inch is not None else cfg.SETTINGS.wheel_diameter_inch
+        mass_rider_kg = mass_rider_kg if mass_rider_kg is not None else cfg.SETTINGS.mass_rider_kg
+        mass_bike_kg = mass_bike_kg if mass_bike_kg is not None else cfg.SETTINGS.mass_bike_kg
+        cw_A_m2 = cw_A_m2 if cw_A_m2 is not None else cfg.SETTINGS.cw_A_m2
+        c_r = c_r if c_r is not None else cfg.SETTINGS.c_r
+
         speeds = self.calculate_speed_profile()
         accelerations = self.calculate_acceleration_profile()
         slopes = self.calculate_slope_profile()
@@ -386,7 +360,6 @@ class TrackCalculator():
         if not speeds or not accelerations or not slopes:
             return []
 
-        g = 9.81
         m_total = mass_rider_kg + mass_bike_kg
         # Raddurchmesser in Zoll (inch) -> Radius in Meter umrechnen (1 inch = 0.0254 m)
         r_wheel = (wheel_diameter_inch * 0.0254) / 2.0
@@ -398,12 +371,12 @@ class TrackCalculator():
         if densities and len(densities) > len(speeds):
             rho_air = np.array(densities[:-1])
         else:
-            rho_air = 1.225
+            rho_air = cfg.PHYSICS.RHO_AIR_SEA_LEVEL
 
         F_inertia = m_total * a
-        F_slope = m_total * g * np.sin(phi)
+        F_slope = m_total * cfg.PHYSICS.GRAVITY_EARTH * np.sin(phi)
         F_drag = 0.5 * rho_air * cw_A_m2 * v**2
-        F_rolling = c_r * m_total * g * np.cos(phi)
+        F_rolling = c_r * m_total * cfg.PHYSICS.GRAVITY_EARTH * np.cos(phi)
 
         F_total = F_inertia + F_slope + F_drag + F_rolling
         T = F_total * r_wheel  # Nm
@@ -412,16 +385,23 @@ class TrackCalculator():
 
     def calculate_motor_current_profile(
         self,
-        motor_constant_NmA: float = 1.5,
-        wheel_diameter_inch: float = 27.0,
-        mass_rider_kg: float = 70.0,
-        mass_bike_kg: float = 10.0,
-        cw_A_m2: float = 0.5625,
-        c_r: float = 0.015,
+        motor_constant_NmA: float = None,
+        wheel_diameter_inch: float = None,
+        mass_rider_kg: float = None,
+        mass_bike_kg: float = None,
+        cw_A_m2: float = None,
+        c_r: float = None,
     ):
         """
         Calculates the motor current for each GPS segment in Amperes.
         """
+        motor_constant_NmA = motor_constant_NmA if motor_constant_NmA is not None else cfg.SETTINGS.motor_constant_NmA
+        wheel_diameter_inch = wheel_diameter_inch if wheel_diameter_inch is not None else cfg.SETTINGS.wheel_diameter_inch
+        mass_rider_kg = mass_rider_kg if mass_rider_kg is not None else cfg.SETTINGS.mass_rider_kg
+        mass_bike_kg = mass_bike_kg if mass_bike_kg is not None else cfg.SETTINGS.mass_bike_kg
+        cw_A_m2 = cw_A_m2 if cw_A_m2 is not None else cfg.SETTINGS.cw_A_m2
+        c_r = c_r if c_r is not None else cfg.SETTINGS.c_r
+
         if motor_constant_NmA <= 0:
             raise ValueError("Motor constant must be positive.")
 
@@ -455,10 +435,10 @@ class TrackCalculator():
         Calculate the air density at a given altitude and temperature using the barometric formula.
         """
         #pressure in pascal at given altitude
-        pressure_pa = cfg.P0_PASCAL * (1 - cfg.L_TEMP_LAPSE_RATE * altitude_m / cfg.T0_KELVIN) ** (cfg.GRAVITATION_EARTH * cfg.M_MOLAR_MASS_AIR / (cfg.R_U_IDEAL_GAS * cfg.L_TEMP_LAPSE_RATE))
+        pressure_pa = cfg.ATMOSPHERE.P0_PASCAL * (1 - cfg.ATMOSPHERE.L_TEMP_LAPSE_RATE * altitude_m / cfg.ATMOSPHERE.T0_KELVIN) ** (cfg.PHYSICS.GRAVITY_EARTH * cfg.ATMOSPHERE.M_MOLAR_MASS_AIR / (cfg.ATMOSPHERE.R_U_IDEAL_GAS * cfg.ATMOSPHERE.L_TEMP_LAPSE_RATE))
         temperature_kelvin = temperature_celsius + 273.15
 
-        return pressure_pa / (cfg.R_U_IDEAL_GAS / cfg.M_MOLAR_MASS_AIR * temperature_kelvin)
+        return pressure_pa / (cfg.ATMOSPHERE.R_U_IDEAL_GAS / cfg.ATMOSPHERE.M_MOLAR_MASS_AIR * temperature_kelvin)
 
 
 

@@ -1,18 +1,33 @@
-# constants for the rest of the code
+from dataclasses import dataclass
+# changed the constants to dataclasses because they seemed cleaner
+@dataclass(frozen=True)
+class PhysicsConstants:
+    GRAVITY_EARTH: float = 9.81
+    GRAVITY_MOON: float = 1.62
+    GRAVITY_MARS: float = 3.71
+    GRAVITY_JUPITER: float = 24.79
+    EARTH_RADIUS_KM: float = 6371.0
+    EARTH_RADIUS_M: float = 6_371_000.0
+    RHO_AIR_SEA_LEVEL: float = 1.225
 
-GRAVITATION_EARTH = 9.81  
-GRAVITATION_MOON = 1.62
-GRAVITATION_MARS = 3.71
-GRAVITATION_JUPITER = 24.79
+@dataclass(frozen=True)
+class AtmosphereConstants:
+    P0_PASCAL: float = 101325.0
+    T0_KELVIN: float = 288.15
+    L_TEMP_LAPSE_RATE: float = 0.0065
+    R_U_IDEAL_GAS: float = 8.31446
+    M_MOLAR_MASS_AIR: float = 0.0289652
 
-EARTH_RADIUS_KM = 6371.0
-EARTH_RADIUS_M = 6_371_000.0
+@dataclass
+class SimulationSettings:
+    mass_rider_kg: float = 70.0
+    mass_bike_kg: float = 10.0
+    cw_A_m2: float = 0.5625
+    c_r: float = 0.015
+    wheel_diameter_inch: float = 27.0
+    motor_constant_NmA: float = 1.5
 
-P0_PASCAL = 101325.0  # sea level standard pressure
-T0_KELVIN = 288.15  # sea level standard temperature
-L_TEMP_LAPSE_RATE = 0.0065 # temperature lapse rate: how much the temperature decreases with altitude in the troposphere
-R_U_IDEAL_GAS = 8.31446  # universal ideal gas constant
-M_MOLAR_MASS_AIR = 0.0289652  # molar mass of air
-
-#placeholder for air density at sea level, will implement a function to calculate it based on altitude 
-RHO_AIR = 1.225
+# for easy access to the constants
+PHYSICS = PhysicsConstants()
+ATMOSPHERE = AtmosphereConstants()
+SETTINGS = SimulationSettings()
