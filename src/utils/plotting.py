@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from Abschlussprojekt_LT_GR_Programmieren_I.src.gps.calculator import TrackCalculator
+from src.gps.calculator import TrackCalculator
 
 class TrackPlotter:
     """

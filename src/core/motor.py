@@ -1,4 +1,4 @@
-from Abschlussprojekt_LT_GR_Programmieren_I.src.core import battery_pack as bp
+from src.core import battery_pack as bp
 import logging
 
 logger = logging.getLogger(__name__)

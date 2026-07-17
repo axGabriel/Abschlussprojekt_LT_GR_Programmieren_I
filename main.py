@@ -1,13 +1,13 @@
 from pathlib import Path
-from Abschlussprojekt_LT_GR_Programmieren_I.src.gps.gps_classes import GpsTrack
-from Abschlussprojekt_LT_GR_Programmieren_I.src.gps.calculator import TrackCalculator
+from src.gps.gps_classes import GpsTrack
+from src.gps.calculator import TrackCalculator
 from src.utils.plotting import TrackPlotter
 
-from Abschlussprojekt_LT_GR_Programmieren_I.src.core.battery_pack import LiPoBatteryPack
-from Abschlussprojekt_LT_GR_Programmieren_I.src.core.battery_pack import NmcBatteryPack
-from Abschlussprojekt_LT_GR_Programmieren_I.src.core.motor import Motor
-from Abschlussprojekt_LT_GR_Programmieren_I.src.core.ebike_model import VehicleModel
-from Abschlussprojekt_LT_GR_Programmieren_I.src.simulation.ebike_simulator import EBikeSimulator
+from src.core.battery_pack import LiPoBatteryPack
+from src.core.battery_pack import NmcBatteryPack
+from src.core.motor import Motor
+from src.core.ebike_model import VehicleModel
+from src.simulation.ebike_simulator import EBikeSimulator
 
 def main():
     data_path = Path("data/final_project_input_data.csv")
