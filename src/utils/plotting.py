@@ -1,6 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from src.gps.calculator import TrackCalculator
+import logging
+
+# Logging config
+logger = logging.getLogger(__name__)
+
 
 class TrackPlotter:
     """
@@ -32,7 +37,7 @@ class TrackPlotter:
         
         plt.savefig(output_path)
         plt.close()
-        print(f"Plot successfully saved to: {output_path}")
+        logger.info(f"Plot successfully saved to: {output_path}")
 
     def plot_elevation_profile(self, output_path):
         
@@ -58,7 +63,7 @@ class TrackPlotter:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path)
         plt.close()
-        print(f"Höhenprofil gespeichert unter: {output_path}")
+        logger.info(f"Höhenprofil gespeichert unter: {output_path}")
         
 
 
@@ -82,7 +87,7 @@ class TrackPlotter:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path)
         plt.close()
-        print(f"Geschwindigkeitsprofil gespeichert unter: {output_path}")
+        logger.info(f"Geschwindigkeitsprofil gespeichert unter: {output_path}")
 
 
     def plot_soc_comparison(self, sim_lipo, sim_nmc, durations, output_path):
@@ -106,7 +111,7 @@ class TrackPlotter:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path)
         plt.close()
-        print(f"SoC-Vergleich gespeichert unter: {output_path}")
+        logger.info(f"SoC-Vergleich gespeichert unter: {output_path}")
 
     
 if __name__ == '__main__':
