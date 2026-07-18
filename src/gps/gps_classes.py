@@ -1,5 +1,9 @@
 import pandas as pd
 from pathlib import Path
+import logging
+
+# Logging config
+logger = logging.getLogger(__name__)
 
 class GeographicData():
     """
@@ -49,7 +53,7 @@ class GpsTrack(GeographicData):
         if not self.csv_file_path.exists():
             raise FileNotFoundError(f"File not found at: {self.csv_file_path}")
 
-        print(f"Loading data for track: {self.dataset_name}...")
+        logger.info(f"Loading data for track: {self.dataset_name}...")
         
         # using pandas to read the CSV, may change this later
         gps_data_table = pd.read_csv(self.csv_file_path, sep=';')

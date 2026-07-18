@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from src.gps.gps_classes import GpsTrack
 from src.gps.calculator import TrackCalculator
@@ -9,6 +10,16 @@ from src.core.motor import Motor
 from src.core.ebike_model import VehicleModel
 from src.simulation.ebike_simulator import EBikeSimulator
 from src import config as cfg
+
+
+# Logging config
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 
 def main():
     data_path = Path("data/final_project_input_data.csv")
@@ -41,7 +52,7 @@ def main():
         rhos = calculator.calculate_air_density_profile()
 
         # Simulate LiPo battery
-        print("---LiPo-Battery Simulation---")
+        logger.info("---LiPo-Battery Simulation---")
         battery_lipo = LiPoBatteryPack(
             capacity_nom_Ah=10,
             internal_resistance_mOhm= 80.0,
@@ -57,12 +68,12 @@ def main():
             
         # start simulation with error handling
         sim_lipo.simulate(power_profile, durations, slopes, speeds, rhos)
-        print(f"Finale Akku-Ladung: {battery_lipo.soc * 100:.1f}%")
-        print(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
+        logger.info(f"Finale Akku-Ladung: {battery_lipo.soc * 100:.1f}%")
+        logger.info(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
 
 
         # Simulate Nmc battery
-        print("---Nmc-Battery Simulation---")
+        logger.info("---Nmc-Battery Simulation---")
         battery_nmc = NmcBatteryPack(
             capacity_nom_Ah=10,
             internal_resistance_mOhm= 70.0,
@@ -78,15 +89,15 @@ def main():
 
         # start simulation with error handling
         sim_nmc.simulate(power_profile, durations, slopes, speeds, rhos)
-        print(f"Finale Akku-Ladung: {battery_nmc.soc * 100:.1f}%")
-        print(f"Endgeschwindigkeit: {vehicle_nmc.v:.2f} m/s")
+        logger.info(f"Finale Akku-Ladung: {battery_nmc.soc * 100:.1f}%")
+        logger.info(f"Endgeschwindigkeit: {vehicle_nmc.v:.2f} m/s")
 
 
         # save comparison plot 
         plotter.plot_soc_comparison(sim_lipo, sim_nmc, durations, soc_comparison_path)
 
     except Exception as error:
-        print(f"An error occurred: {error}")
+        logger.error(f"An error occurred: {error}")
 
 if __name__ == '__main__':
     main()
