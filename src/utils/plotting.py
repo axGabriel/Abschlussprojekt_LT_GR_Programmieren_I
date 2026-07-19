@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd 
+import pydeck as pdk
 from src.gps.calculator import TrackCalculator
 import logging
 
@@ -112,6 +114,120 @@ class TrackPlotter:
         plt.savefig(output_path)
         plt.close()
         logger.info(f"SoC-Vergleich gespeichert unter: {output_path}")
+
+
+
+    def plot_interactive_3d_map(self, calculator: TrackCalculator, output_path):
+        """
+        Creates an interactive 3D map of the GPS route using pydeck (HTML output).
+        """
+        track_points = self.gps_track.track_points
+        if not track_points:
+            logger.warning("No GPS data available for pydeck map visualization.")
+            return
+
+        # 1. Convert track points into a pandas DataFrame
+        data = []
+        for p in track_points:
+            data.append({
+                'lat': p.latitude,
+                'lon': p.longitude,
+                'elevation': p.elevation if p.elevation is not None else 0.0
+            })
+        df = pd.DataFrame(data)
+
+        # 2. Calculate actual route statistics from TrackCalculator
+        speeds_mps = calculator.calculate_speed_profile()
+        max_speed = round(float(np.max(speeds_mps)) * 3.6, 1) if speeds_mps else 0.0
+        avg_speed = round(float(np.mean(speeds_mps)) * 3.6, 1) if speeds_mps else 0.0
+        total_dist = round(calculator.calculate_total_distance(), 2)
+
+        # 3. Prepare 3D geometry (vertical elevation multiplier = 5.0 for visual clarity)
+        elevation_multiplier = 5.0
+        min_elev = df['elevation'].min()
+        max_elev = df['elevation'].max()
+        elev_diff = max_elev - min_elev if (max_elev - min_elev) > 0 else 1.0
+
+        vertical_lines = []
+        top_path_segments = []
+
+        for i in range(len(df)):
+            p = df.iloc[i]
+            current_relative_h = (p['elevation'] - min_elev) * elevation_multiplier
+            ratio = (p['elevation'] - min_elev) / elev_diff
+            color = [int(255 * ratio), 50, int(255 * (1 - ratio)), 150]
+
+            vertical_lines.append({
+                'start': [p['lon'], p['lat'], 0],
+                'end': [p['lon'], p['lat'], current_relative_h],
+                'color': color,
+                'real_elev': round(p['elevation'], 2),
+                'rel_elev': round(p['elevation'] - min_elev, 2)
+            })
+
+        for i in range(len(df) - 1):
+            p1 = df.iloc[i]
+            p2 = df.iloc[i + 1]
+            h1 = (p1['elevation'] - min_elev) * elevation_multiplier
+            h2 = (p2['elevation'] - min_elev) * elevation_multiplier
+            ratio = (p1['elevation'] - min_elev) / elev_diff
+            color = [int(255 * ratio), 50, int(255 * (1 - ratio)), 255]
+
+            top_path_segments.append({
+                'path': [[p1['lon'], p1['lat'], h1], [p2['lon'], p2['lat'], h2]],
+                'color': color,
+                'real_elev': round(p1['elevation'], 2),
+                'rel_elev': round(p1['elevation'] - min_elev, 2)
+            })
+
+        # 4. Define pydeck layers for vertical pillars and top path
+        curtain_layer = pdk.Layer(
+            "LineLayer",
+            data=pd.DataFrame(vertical_lines),
+            get_source_position="start",
+            get_target_position="end",
+            get_color="color",
+            get_width=3,
+            pickable=True
+        )
+
+        top_layer = pdk.Layer(
+            "PathLayer",
+            data=pd.DataFrame(top_path_segments),
+            get_path="path",
+            get_color="color",
+            get_width=10,
+            pickable=True
+        )
+
+        view_state = pdk.ViewState(
+            latitude=df['lat'].iloc[0], longitude=df['lon'].iloc[0],
+            zoom=15.5, pitch=65, bearing=45
+        )
+
+        info_html = f"""
+        <div style="background: rgba(255,255,255,0.85); padding: 15px; border-radius: 8px; font-family: Arial; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="margin-top:0; color: #333;">Track Statistics ({self.gps_track.dataset_name})</h3>
+            <b>Max Speed:</b> {max_speed} km/h<br>
+            <b>Avg Speed:</b> {avg_speed} km/h<br>
+            <b>Total Distance:</b> {total_dist} km
+        </div>
+        """
+
+        deck = pdk.Deck(
+            layers=[curtain_layer, top_layer],
+            initial_view_state=view_state,
+            map_provider='carto',
+            map_style=pdk.map_styles.LIGHT,
+            tooltip={"text": "Absolute Elevation: {real_elev} m\nRelative Elevation: {rel_elev} m"},
+            description=info_html
+        )
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        deck.to_html(str(output_path))
+        logger.info(f"Interactive 3D map successfully saved to: {output_path}")
+
+        
 
     
 if __name__ == '__main__':

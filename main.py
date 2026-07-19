@@ -12,6 +12,10 @@ from src.simulation.ebike_simulator import EBikeSimulator
 from src import config as cfg
 
 
+
+
+
+
 # Logging config
 
 logging.basicConfig(
@@ -27,6 +31,7 @@ def main():
     elevation_plot_path = Path("results/elevation_profile.png")
     speed_plot_path = Path("results/speed_profile.png")
     soc_comparison_path = Path("results/soc_comparison.png")
+    interactive_map_path = Path("results/interactive_map.html")
 
     try:
         # Load data from CSV into GpsTrack object
@@ -43,6 +48,10 @@ def main():
         # Plot the hight and speed proflile using track plotter
         plotter.plot_elevation_profile(elevation_plot_path)
         plotter.plot_speed_profile(calculator, speed_plot_path)
+
+
+        # Generate interactive 3D map (HTML)
+        plotter.plot_interactive_3d_map(calculator, interactive_map_path)
 
         # calculate Profiles from GPS data
         power_profile = calculator.calculate_power_profile()
