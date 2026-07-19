@@ -1,4 +1,6 @@
 import logging
+import tkinter as tk
+from tkinter import filedialog
 from pathlib import Path
 from src.gps.gps_classes import GpsTrack
 from src.gps.calculator import TrackCalculator
@@ -25,8 +27,32 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+
+# source data can be picked from exploerer
+def select_input_file(default_path: Path) -> Path:
+    """Öffnet ein Windows-Explorer-Fenster zur Auswahl einer CSV-Datei."""
+    root = tk.Tk()
+    root.withdraw() 
+    
+    selected_file = filedialog.askopenfilename(
+        title="Wähle die GPS-Daten (CSV) für die Simulation aus",
+        initialdir=default_path.parent if default_path.exists() else Path.cwd(),
+        filetypes=[("CSV Dateien", "*.csv"), ("Alle Dateien", "*.*")]
+    )
+    
+    root.destroy()
+    
+    if selected_file:
+        return Path(selected_file)
+    else:
+        logger.info(f"Keine Datei ausgewählt. Nutze Standarddatei: {default_path}")
+        return default_path
+
+
 def main():
-    data_path = Path("data/final_project_input_data.csv")
+    default_data_path = Path("data/final_project_input_data.csv")
+    data_path = select_input_file(default_data_path)
+    logger.info(f"Nutze Datensatz von: {data_path}")
     plot_path = Path("results/track_plot.png")
     elevation_plot_path = Path("results/elevation_profile.png")
     speed_plot_path = Path("results/speed_profile.png")
