@@ -15,9 +15,6 @@ from src import config as cfg
 
 
 
-
-
-
 # Logging config
 
 logging.basicConfig(
@@ -130,6 +127,14 @@ def main():
 
         # save comparison plot 
         plotter.plot_soc_comparison(sim_lipo, sim_nmc, durations, soc_comparison_path)
+
+        # calorie report
+        energy_report = calculator.calculate_energy_and_calories(sim_lipo)
+        logger.info("--- Calorie & Energy Report (LiPo Run) ---")
+        logger.info(f"Total Route Work: {energy_report['total_work_wh']:.2f} Wh")
+        logger.info(f"Motor Share: {energy_report['motor_work_wh']:.2f} Wh ({energy_report['motor_share_pct']:.1f}%)")
+        logger.info(f"Rider Share: {energy_report['rider_work_wh']:.2f} Wh ({energy_report['rider_share_pct']:.1f}%)")
+        logger.info(f"🔥 Estimated Calories Burned by Rider: {energy_report['calories_burned_kcal']:.0f} kcal")
 
     except Exception as error:
         logger.error(f"An error occurred: {error}")
