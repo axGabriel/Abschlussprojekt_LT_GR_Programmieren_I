@@ -18,6 +18,12 @@ class AtmosphereConstants:
     R_U_IDEAL_GAS: float = 8.31446
     M_MOLAR_MASS_AIR: float = 0.0289652
 
+@dataclass(frozen=True)
+class BioenergeticsConstants:
+    HUMAN_EFFICIENCY_CYCLING: float = 0.24  # 24 % biological efficiency
+    JOULES_PER_KCAL: float = 4184.0         # 1 kcal == 4184 Joule
+
+
 # will be used if there arent any other settings provided
 @dataclass
 class SimulationSettings:
@@ -32,3 +38,4 @@ class SimulationSettings:
 PHYSICS = PhysicsConstants()
 ATMOSPHERE = AtmosphereConstants()
 SETTINGS = SimulationSettings()
+BIO = BioenergeticsConstants()
