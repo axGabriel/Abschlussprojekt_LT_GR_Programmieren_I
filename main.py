@@ -134,7 +134,7 @@ def main():
         logger.info(f"Total Route Work: {energy_report['total_work_wh']:.2f} Wh")
         logger.info(f"Motor Share: {energy_report['motor_work_wh']:.2f} Wh ({energy_report['motor_share_pct']:.1f}%)")
         logger.info(f"Rider Share: {energy_report['rider_work_wh']:.2f} Wh ({energy_report['rider_share_pct']:.1f}%)")
-        logger.info(f"🔥 Estimated Calories Burned by Rider: {energy_report['calories_burned_kcal']:.0f} kcal")
+        logger.info(f"Estimated Calories Burned by Rider: {energy_report['calories_burned_kcal']:.0f} kcal")
 
     except Exception as error:
         logger.error(f"An error occurred: {error}")
