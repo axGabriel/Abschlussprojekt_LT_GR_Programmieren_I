@@ -4,6 +4,7 @@ import pandas as pd
 import pydeck as pdk
 from src.gps.calculator import TrackCalculator
 import logging
+from src.utils import example_utils as utils
 
 # Logging config
 logger = logging.getLogger(__name__)
@@ -114,6 +115,38 @@ class TrackPlotter:
         plt.savefig(output_path)
         plt.close()
         logger.info(f"SoC-Vergleich gespeichert unter: {output_path}")
+
+
+    def plot_temperature_profile(self, calculator, output_path, window_size: int = 5):
+        """
+        creates a plot of temperature using moving average for smoothing.
+        """
+        raw_temps = calculator.calculate_temperature_profile()
+        
+        # Glättung anwenden:
+        smoothed_temps = utils.moving_average(raw_temps, window_size=window_size)
+        
+        durations = np.array(calculator.calculate_segment_durations())
+        cum_time = np.zeros(len(durations) + 1)
+        cum_time[1:] = np.cumsum(durations)
+        plt.figure(figsize=(10, 6))
+        
+        # Rohdaten leicht transparent im Hintergrund plotten:
+        plt.plot(cum_time[:-1], raw_temps, color='gray', alpha=0.4, linestyle=':', label="Messwerte (Rohdaten)")
+        
+        # Geglättete Daten im Vordergrund plotten:
+        plt.plot(cum_time[:-1], smoothed_temps, color='orange', linewidth=2.0, label=f"Geglättet (Moving Avg, w={window_size})")
+        
+        plt.title(f"Temperaturprofil - {self.gps_track.dataset_name}")
+        plt.xlabel("Zeit / s")
+        plt.ylabel("Temperatur / °C")
+        plt.grid(True)
+        plt.legend(loc="upper right")
+        
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path)
+        plt.close()
+        logger.info(f"Geglättetes Temperaturprofil gespeichert unter: {output_path}")
 
 
 
