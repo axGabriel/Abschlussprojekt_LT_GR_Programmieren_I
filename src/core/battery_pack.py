@@ -36,12 +36,17 @@ class BatteryPack:
         self.Vmin = Vmin
         self.Vmax = Vmax
 
-    def apply_current(self, current: float, duration: float) -> None:
-        """Modify the SoC based on the applied current & duration"""
-        #(I * dt / C_nom)
-        delta_soc = (current * duration) / self.capacity_nom_As
-        new_soc = self.soc - delta_soc
+    
+    def apply_current(self, current: float, duration: float, temperature_celsius: float = 20.0) -> None:
+        """Modify the SoC based on the applied current, duration & temperature"""
+        modifier = 1.0
+        # temperature < 20°C and drain > 0 
+        if current > 0.0 and temperature_celsius < 20.0:
+            modifier += (20.0 - temperature_celsius) * 0.015  # 1.5% more power usage per °C colder
         
+        delta_soc = (current * modifier * duration) / self.capacity_nom_As
+        new_soc = self.soc - delta_soc
+    
         if utils.is_less_equal_in_tol(new_soc, 0.0):
             self.soc = 0.0
             logger.warning("Akku leer")
@@ -50,7 +55,8 @@ class BatteryPack:
             self.soc = 1.0
             logger.info("Akku voll")
         else:
-            self.soc = new_soc
+            self.soc = new_soc    
+                
 
     def is_empty(self) -> bool:
         """Returns true if battery is empty"""
@@ -69,17 +75,18 @@ class BatteryPack:
 
 class LiPoBatteryPack(BatteryPack):
     """Lithium polymer battery pack, inherits from BatteryPack class"""
-    # characteristic curve from task description (page 20)
+    # characteristic curve from task description
     _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30, 0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
     _ocv_table = [32.00, 35.87, 36.85, 37.56, 37.87, 38.28, 38.81, 39.05, 39.55, 40.27, 40.70, 41.16, 41.65, 42.00]
     
-    def voltage(self, current: float = 0.0) -> float:
-        """Return the current voltage of the battery"""
+    def voltage(self, current: float = 0.0, temperature_celsius: float = 20.0) -> float:
+        """Return the current voltage of the battery considering temperature."""
         ocv = np.interp(self.soc, self._soc_table, self._ocv_table)
-
-        #calc voltage loss via internal res.
-
-        return ocv - (self.internal_resistance_mOhm / 1000.0) * current
+    
+        # internal resistance increases at temperatures below 20°C
+        r_factor = 1.0 + max(0.0, (20.0 - temperature_celsius) * 0.025)
+        r_effective = self.internal_resistance_mOhm * r_factor
+        return ocv - (r_effective / 1000.0) * current
 
 class NmcBatteryPack(BatteryPack):
     """Nickel mangan coblt battery pack, inherrits from BatteryPack class"""
@@ -87,29 +94,12 @@ class NmcBatteryPack(BatteryPack):
     _soc_table = [0.00, 0.04, 0.09, 0.13, 0.17, 0.21, 0.26, 0.30, 0.40, 0.52, 0.64, 0.76, 0.88, 1.00]
     _ocv_table = [32.00, 32.61, 33.17, 33.85, 34.24, 34.66, 35.39, 35.65, 36.65, 37.64, 38.91, 40.14, 41.08, 42.00]
     
-    # interpolate voltage between table values
-    def voltage(self, current: float = 0.0) -> float:
-        """calculates the act voltage of the NMC Battery Pack"""
+    def voltage(self, current: float = 0.0, temperature_celsius: float = 20.0) -> float:
+        """Return the current voltage of the battery considering temperature."""
         ocv = np.interp(self.soc, self._soc_table, self._ocv_table)
+    
+        # internal resistance increases at temperatures below 20°C
+        r_factor = 1.0 + max(0.0, (20.0 - temperature_celsius) * 0.025)
+        r_effective = self.internal_resistance_mOhm * r_factor
+        return ocv - (r_effective / 1000.0) * current
 
-        #calc voltage loss via internal res.
-
-        return ocv - (self.internal_resistance_mOhm / 1000) * current
-
-class ColdWeatherBattery(BatteryPack):
-    def apply_current(self, current: float, duration: float) -> None:
-        """Modify the SoC based on the applied current & duration"""
-        #(I * dt / C_nom)
-        modifier = 1.2 if current > 0.0 else 1.0
-        delta_soc = ((current * duration) / self.capacity_nom_As) * modifier #Modifier for cold weather battery
-        new_soc = self.soc - delta_soc
-        
-        if utils.is_less_equal_in_tol(new_soc, 0.0):
-            self.soc = 0.0
-            logger.warning("Akku leer")
-            raise RuntimeError("Akku leer")
-        elif utils.is_greater_equal_in_tol(new_soc, 1.0):
-            self.soc = 1.0
-            logger.info("Akku voll")
-        else:
-            self.soc = new_soc

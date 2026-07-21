@@ -22,3 +22,13 @@ def is_less_equal_in_tol(a: float, b: float, tol: float = 1e-9) -> bool:
 def is_greater_equal_in_tol(a: float, b: float, tol: float = 1e-9) -> bool:
     """Check if a is greater than or equal to b within a given tolerance."""
     return a >= b - tol
+
+def moving_average(data_list: list[float], window_size: int = 5) -> list[float]:
+    """calculating moving average"""
+    data_smoothed = []
+    for i in range(len(data_list)):
+        lower_bound = max(0, i - window_size + 1)
+        window = data_list[lower_bound : i + 1]
+        avg = sum(window) / len(window)
+        data_smoothed.append(avg)
+    return data_smoothed

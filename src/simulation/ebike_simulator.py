@@ -20,7 +20,7 @@ class EBikeSimulator:
           self.distanceValues = [vehicle.s]
           self.socValues = [battery.soc]
 
-    def simulate(self, power: list[float], duration: list[float], slopes: list[float] = None, speeds: list[float] = None, rhos: list[float] = None) -> None:
+    def simulate(self, power: list[float], duration: list[float], slopes: list[float] = None, speeds: list[float] = None, rhos: list[float] = None, temperatures: list[float] = None ) -> None:
         if len(power) != len(duration):
             logger.error("Power and duration profiles must have the same length.")
             raise ValueError("Power and duration profiles must have the same length.")
@@ -31,33 +31,33 @@ class EBikeSimulator:
             speeds = [0.0] * len(power)
         if rhos is None:
             rhos = [cfg.PHYSICS.RHO_AIR_SEA_LEVEL] * len(power)
-            
+        if temperatures is None:
+            temperatures = [20.0] * len(power)    
+
         logger.info("Starting simulation")
 
         act_voltage = self.battery.voltage()
         self.voltageValues.append(act_voltage)
 
         for i in range(len(power)):
+            temp = temperatures[i]
+            
             if duration[i] < 0:
                 logger.error(f"Duration value at index {i} is negative: {duration[i]}")
                 raise ValueError("Duration values cannot be negative.")
-
             if self.battery.is_empty():
-                # Akku ist leer → kein Strom, keine Motorleistung
                 act_current = 0.0
                 self.vehicle.step(0.0, duration[i], slopes[i], speeds[i], rho=rhos[i])
             else:
                 try:
                     act_current = self.motor.get_current_draw(power[i], act_voltage)
-                    self.battery.apply_current(act_current, duration[i])
-                    act_voltage = self.battery.voltage(act_current)
+                    self.battery.apply_current(act_current, duration[i], temperature_celsius=temp)
+                    act_voltage = self.battery.voltage(act_current, temperature_celsius=temp)
                     self.vehicle.step(power[i], duration[i], slopes[i], speeds[i], rho=rhos[i])
                 except RuntimeError:
-                    # Akku wurde in diesem Schritt leer
                     act_current = 0.0
-                    act_voltage = self.battery.voltage(0.0)
+                    act_voltage = self.battery.voltage(0.0, temperature_celsius=temp)
                     logger.warning(f"Akku leer ab Segment {i}")
-
             self.currentValues.append(act_current)
             self.voltageValues.append(act_voltage)
             self.speedValues.append(self.vehicle.v)
