@@ -1,7 +1,9 @@
 import unittest
 from src.core.battery_pack import BatteryPack
 from src.core.ebike_model import VehicleModel
-
+from src.core.battery_pack import LiPoBatteryPack, NmcBatteryPack
+from src.utils.example_utils import moving_average
+from src.core.motor import Motor
 
 class TestBatteryPack(unittest.TestCase):
     """Test cases for the BatteryPack class."""
@@ -30,6 +32,17 @@ class TestBatteryPack(unittest.TestCase):
         self.assertTrue(battery.is_empty())
         self.assertEqual(battery.soc, 0.0)
 
+    def test_nmc_cold_temperature_discharges_faster(self):
+        """Check if drawing current from NMC battery at 0°C consumes more SoC than at 20°C."""
+        nmc_warm = NmcBatteryPack(capacity_nom_Ah=10.0, initial_soc=1.0)
+        nmc_cold = NmcBatteryPack(capacity_nom_Ah=10.0, initial_soc=1.0)
+        
+        nmc_warm.apply_current(current=5.0, duration=600.0, temperature_celsius=20.0)
+        nmc_cold.apply_current(current=5.0, duration=600.0, temperature_celsius=0.0)
+        
+        self.assertLess(nmc_cold.soc, nmc_warm.soc)
+
+
 
 class TestVehicleModel(unittest.TestCase):
     """Test cases for the VehicleModel class."""
@@ -47,6 +60,58 @@ class TestVehicleModel(unittest.TestCase):
         vehicle = VehicleModel(mass=80.0)
         with self.assertRaises(ValueError):
             vehicle.step(power=250.0, duration=-10.0)
+
+
+
+class TestBatteryTemperature(unittest.TestCase):
+    """Tests for temperature-dependent battery behavior."""
+    def test_cold_temperature_increases_voltage_drop(self):
+        """Check if voltage under current draw is lower at 0°C than at 20°C due to higher internal resistance."""
+        lipo = LiPoBatteryPack(capacity_nom_Ah=10.0, internal_resistance_mOhm=80.0)
+        
+        v_warm = lipo.voltage(current=10.0, temperature_celsius=20.0)
+        v_cold = lipo.voltage(current=10.0, temperature_celsius=0.0)
+        
+        self.assertLess(v_cold, v_warm)
+    def test_cold_temperature_discharges_faster(self):
+        """Check if drawing current at 0°C consumes more SoC than at 20°C."""
+        lipo_warm = LiPoBatteryPack(capacity_nom_Ah=10.0, initial_soc=1.0)
+        lipo_cold = LiPoBatteryPack(capacity_nom_Ah=10.0, initial_soc=1.0)
+        lipo_warm.apply_current(current=5.0, duration=600.0, temperature_celsius=20.0)
+        lipo_cold.apply_current(current=5.0, duration=600.0, temperature_celsius=0.0)
+        self.assertLess(lipo_cold.soc, lipo_warm.soc)
+
+class TestUtils(unittest.TestCase):
+    """Tests for utility functions."""
+    def test_moving_average_constant_values(self):
+        """Check if moving average of a constant list returns the same values."""
+        data = [10.0, 10.0, 10.0, 10.0]
+        result = moving_average(data, window_size=3)
+        self.assertEqual(result, [10.0, 10.0, 10.0, 10.0])
+    def test_moving_average_smoothing(self):
+        """Check if peak values are smoothed correctly."""
+        data = [0.0, 10.0, 0.0]
+        result = moving_average(data, window_size=2)
+        # i=0: [0.0] -> avg 0.0
+        # i=1: [0.0, 10.0] -> avg 5.0
+        # i=2: [10.0, 0.0] -> avg 5.0
+        self.assertEqual(result, [0.0, 5.0, 5.0])
+
+class TestMotor(unittest.TestCase):
+    """Tests for the Motor class."""
+    def test_invalid_efficiency_raises_error(self):
+        """Check if invalid efficiency values raise a ValueError."""
+        with self.assertRaises(ValueError):
+            Motor(efficiency=1.5)
+        with self.assertRaises(ValueError):
+            Motor(efficiency=-0.1)
+    def test_current_draw_calculation(self):
+        """Check if current draw calculation matches formula P / (U * eff)."""
+        motor = Motor(efficiency=0.85)
+        current = motor.get_current_draw(power=340.0, voltage=40.0)
+        # 340 / (40 * 0.85) = 340 / 34 = 10.0 A
+        self.assertAlmostEqual(current, 10.0)
+
 
 
 if __name__ == '__main__':
