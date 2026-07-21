@@ -517,6 +517,7 @@ class TrackCalculator():
         }    
 
 
+
     def calculate_temperature_profile(self) -> list[float]:
         """gernerate temperatureprofile °C per segment via GPS-Data"""
         temperatures = []
@@ -525,6 +526,7 @@ class TrackCalculator():
             temp = points[i].temperature if points[i].temperature is not None else 20.0
             temperatures.append(temp)
         return temperatures
+
 
 if __name__ == '__main__':
     pass
