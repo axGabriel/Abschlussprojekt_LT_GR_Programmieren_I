@@ -468,6 +468,63 @@ class TrackCalculator():
 
 
 
+    def calculate_energy_and_calories(
+        self,
+        sim: object = None,
+        human_efficiency: float = cfg.BIO.HUMAN_EFFICIENCY_CYCLING,
+        mass_rider_kg: float = None,
+        mass_bike_kg: float = None,
+    ) -> dict:
+        """
+        Calculates total route mechanical energy, electric motor contribution,
+        rider muscle work, and estimated dietary calories burned (kcal).
+        
+        Returns a dictionary with all energy metrics.
+        """
+        power_profile = self.calculate_power_profile(mass_rider_kg, mass_bike_kg)
+        durations = self.calculate_segment_durations()
+
+        if not power_profile or not durations:
+            return {
+                "total_work_wh": 0.0, "motor_work_wh": 0.0, "rider_work_wh": 0.0,
+                "calories_burned_kcal": 0.0, "motor_share_pct": 0.0, "rider_share_pct": 0.0
+            }
+
+        # Total mechanical work required for the route (Joules)
+        total_work_joules = sum(max(0.0, p) * dt for p, dt in zip(power_profile, durations))
+
+        # Electric motor work if a simulator run is provided
+        motor_work_joules = 0.0
+        if sim and hasattr(sim, "voltageValues") and hasattr(sim, "currentValues") and sim.voltageValues:
+            batt_energy_joules = sum(
+                u * i * dt for u, i, dt in zip(sim.voltageValues, sim.currentValues, durations)
+            )
+            motor_work_joules = batt_energy_joules * sim.motor.efficiency
+
+        # Remaining work pedaled by human muscles
+        human_work_joules = max(0.0, total_work_joules - motor_work_joules)
+
+        # Convert mechanical Joules to dietary kcal
+        calories_kcal = calories_kcal = human_work_joules / (cfg.BIO.JOULES_PER_KCAL * human_efficiency)
+
+        return {
+            "total_work_wh": total_work_joules / 3600.0,
+            "motor_work_wh": motor_work_joules / 3600.0,
+            "rider_work_wh": human_work_joules / 3600.0,
+            "calories_burned_kcal": calories_kcal,
+            "motor_share_pct": (motor_work_joules / total_work_joules * 100.0) if total_work_joules > 0 else 0.0,
+            "rider_share_pct": (human_work_joules / total_work_joules * 100.0) if total_work_joules > 0 else 0.0,
+        }    
+
+
+    def calculate_temperature_profile(self) -> list[float]:
+        """gernerate temperatureprofile °C per segment via GPS-Data"""
+        temperatures = []
+        points = self.gps_track.track_points
+        for i in range(len(points) - 1):
+            temp = points[i].temperature if points[i].temperature is not None else 20.0
+            temperatures.append(temp)
+        return temperatures
 
 if __name__ == '__main__':
     pass
