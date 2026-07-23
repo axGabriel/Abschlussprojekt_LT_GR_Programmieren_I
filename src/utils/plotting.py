@@ -42,31 +42,57 @@ class TrackPlotter:
         plt.close()
         logger.info(f"Plot successfully saved to: {output_path}")
 
-    def plot_elevation_profile(self, output_path):
-        
-        """
-        Creates a plot of the elevation profile over distance.
-        """
 
+    def plot_elevation_profile(self, calculator, output_path):
+        """
+        Creates a plot of the elevation profile over distance,
+        color-coded by speed.
+        """
+        import matplotlib.colors as mcolors
+        from matplotlib.collections import LineCollection
         track_points = self.gps_track.track_points
-        elevations = [p.elevation for p in track_points]
-        calculator = TrackCalculator(self.gps_track)
+        elevations = np.array([p.elevation for p in track_points])
+        
+        # Distanzen berechnen
         segment_distances_km = calculator._calculate_segment_distances_m() / 1000.0
         cum_distances = np.zeros(len(track_points))
         cum_distances[1:] = np.cumsum(segment_distances_km)
-        plt.figure(figsize=(10, 6))
-        plt.fill_between(cum_distances, elevations, color='green', alpha=0.3)
-        plt.plot(cum_distances, elevations, color='green', label='Höhenprofil', linewidth=1.5)
         
-        plt.title(f"Höhenprofil - {self.gps_track.dataset_name}")
-        plt.xlabel("Distanz / km")
-        plt.ylabel("Höhe / m")
-        plt.grid(True)
+        # Geschwindigkeiten für jedes Segment abrufen (in km/h)
+        segment_speeds_kmh = np.array(calculator.calculate_speed_profile()) * 3.6
         
+        # Koordinaten für die LineCollection vorbereiten (Start- und Endpunkte pro Liniensegment)
+        points = np.array([cum_distances, elevations]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        # Eigene Colormap erstellen: Grün (langsam) -> Gelb -> Rot (schnell)
+        cmap = mcolors.LinearSegmentedColormap.from_list("green_red", ["green", "yellow", "red"])
+        
+        # Farbskala an die auftretenden Geschwindigkeiten anpassen (0 bis Max-Speed)
+        max_speed = segment_speeds_kmh.max() if len(segment_speeds_kmh) > 0 and segment_speeds_kmh.max() > 0 else 1
+        norm = plt.Normalize(0, max_speed)
+        # Die mehrfarbige Linie erstellen
+        lc = LineCollection(segments, cmap=cmap, norm=norm)
+        lc.set_array(segment_speeds_kmh)
+        lc.set_linewidth(2.5)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        line = ax.add_collection(lc)
+        
+        # Achsen-Limits setzen (damit das Diagramm nicht leer bleibt)
+        ax.set_xlim(cum_distances.min(), cum_distances.max())
+        elev_min, elev_max = elevations.min(), elevations.max()
+        padding = (elev_max - elev_min) * 0.1 if elev_max != elev_min else 10
+        ax.set_ylim(elev_min - padding, elev_max + padding)
+        # Den vertikalen Farbbalken (Legende) rechts hinzufügen
+        cbar = fig.colorbar(line, ax=ax)
+        cbar.set_label('Geschwindigkeit / km/h')
+        ax.set_title(f"Höhenprofil nach Geschwindigkeit - {self.gps_track.dataset_name}")
+        ax.set_xlabel("Distanz / km")
+        ax.set_ylabel("Höhe / m")
+        ax.grid(True, linestyle=':', alpha=0.6)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path)
         plt.close()
-        logger.info(f"Höhenprofil gespeichert unter: {output_path}")
+        logger.info(f"Höhenprofil (Speed-Color) gespeichert unter: {output_path}")
         
 
 
