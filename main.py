@@ -71,7 +71,7 @@ def main():
         plotter.plot_track_path(plot_path)
 
         # Plot the hight and speed proflile using track plotter
-        plotter.plot_elevation_profile(elevation_plot_path)
+        plotter.plot_elevation_profile(calculator, elevation_plot_path)
         plotter.plot_speed_profile(calculator, speed_plot_path)
 
         # Plot temperature profile using track plotter
