@@ -55,6 +55,7 @@ def main():
     soc_comparison_path = Path("results/soc_comparison.png")
     interactive_map_path = Path("results/interactive_map.html")
     temperature_plot_path = Path("results/temperature_profile.png")
+    pace_plot_path = Path("results/pace_profile.png")
 
     try:
         # Load data from CSV into GpsTrack object
@@ -74,6 +75,9 @@ def main():
 
         # Plot temperature profile using track plotter
         plotter.plot_temperature_profile(calculator, temperature_plot_path, window_size=5)
+
+        # Plot pace profile using track plotter
+        plotter.plot_pace_profile(calculator, pace_plot_path)
 
         # Generate interactive 3D map (HTML)
         plotter.plot_interactive_3d_map(calculator, interactive_map_path)
@@ -141,6 +145,20 @@ def main():
         logger.info(f"Motor Share: {energy_report['motor_work_wh']:.2f} Wh ({energy_report['motor_share_pct']:.1f}%)")
         logger.info(f"Rider Share: {energy_report['rider_work_wh']:.2f} Wh ({energy_report['rider_share_pct']:.1f}%)")
         logger.info(f"Estimated Calories Burned by Rider: {energy_report['calories_burned_kcal']:.0f} kcal")
+
+
+        # Pace report
+        avg_pace = calculator.calculate_average_pace()
+        avg_min = int(avg_pace)
+        avg_sec = int(round((avg_pace - avg_min) * 60))
+        if avg_sec == 60:
+            avg_min += 1
+            avg_sec = 0
+        logger.info("--- Pace Report ---")
+        logger.info(f"Average Pace: {avg_min}:{avg_sec:02d} min/km")
+
+                
+
 
     except Exception as error:
         logger.error(f"An error occurred: {error}")

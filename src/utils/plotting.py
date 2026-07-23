@@ -149,6 +149,59 @@ class TrackPlotter:
         logger.info(f"Geglättetes Temperaturprofil gespeichert unter: {output_path}")
 
 
+    def plot_pace_profile(self, calculator, output_path):
+        """
+        Creates a bar chart of the pace (min/km) for each kilometer.
+        """
+        pace_profile = calculator.calculate_pace_profile()
+        if not pace_profile:
+            logger.warning("No pace data available for plotting.")
+            return
+            
+        kilometers = list(range(1, len(pace_profile) + 1))
+        
+        plt.figure(figsize=(10, 6))
+        # Draw as a bar chart (typical for pace profiles in running/cycling apps)
+        plt.bar(kilometers, pace_profile, color='purple', alpha=0.7, edgecolor='indigo', width=0.8)
+        
+        # Draw average pace as a red dashed line
+        avg_pace = calculator.calculate_average_pace()
+        avg_min = int(avg_pace)
+        avg_sec = int(round((avg_pace - avg_min) * 60))
+        if avg_sec == 60:
+            avg_min += 1
+            avg_sec = 0
+            
+        plt.axhline(y=avg_pace, color='red', linestyle='--', linewidth=1.5, 
+                    label=f"Avg: {avg_min}:{avg_sec:02d} min/km")
+        
+        plt.title(f"Pace per Kilometer - {self.gps_track.dataset_name}")
+        plt.xlabel("Kilometer")
+        plt.ylabel("Pace (min/km)")
+        
+        # Format Y-axis labels as MM:SS
+        def format_y_labels(y_val, *args):
+            minutes = int(y_val)
+            seconds = int(round((y_val - minutes) * 60))
+            if seconds == 60:
+                minutes += 1
+                seconds = 0
+            return f"{minutes}:{seconds:02d}"
+            
+        from matplotlib.ticker import FuncFormatter
+        plt.gca().yaxis.set_major_formatter(FuncFormatter(format_y_labels))
+        
+        plt.grid(axis='y', linestyle=':', alpha=0.6)
+        # Label the X-axis with numbers only every 5 km
+        ticks = [k for k in kilometers if k % 5 == 0]
+        plt.xticks(ticks)
+        plt.legend(loc="upper right")
+        
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path)
+        plt.close()
+        logger.info(f"Pace profile saved to: {output_path}")    
+
 
     def plot_interactive_3d_map(self, calculator: TrackCalculator, output_path):
         """
