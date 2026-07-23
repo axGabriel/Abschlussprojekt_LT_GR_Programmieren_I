@@ -4,6 +4,8 @@ from src.core.ebike_model import VehicleModel
 from src.core.battery_pack import LiPoBatteryPack, NmcBatteryPack
 from src.utils.example_utils import moving_average
 from src.core.motor import Motor
+from src.gps.calculator import TrackCalculator
+from src.gps.gps_classes import GpsTrack
 
 class TestBatteryPack(unittest.TestCase):
     """Test cases for the BatteryPack class."""
@@ -19,7 +21,7 @@ class TestBatteryPack(unittest.TestCase):
     def test_invalid_voltage_range_raises_error(self):
         """Check if a ValueError is raised when Vmin >= Vmax."""
         with self.assertRaises(ValueError):
-            BatteryPack(capacity_nom_Ah=10.0, Vmin=42.0, Vmax=32.0)
+         BatteryPack(capacity_nom_Ah=10.0, v_min=42.0, v_max=32.0)
 
     def test_battery_depletion_raises_runtime_error(self):
         """Check if a RuntimeError ('Akku leer') is raised when the SoC drops to 0 or below."""
@@ -112,6 +114,32 @@ class TestMotor(unittest.TestCase):
         # 340 / (40 * 0.85) = 340 / 34 = 10.0 A
         self.assertAlmostEqual(current, 10.0)
 
+
+class TestTrackCalculator(unittest.TestCase):
+    """Test cases for the TrackCalculator class."""
+    
+    def setUp(self):
+        #dummy calculator with an empty track to test edge cases
+        dummy_track = GpsTrack.__new__(GpsTrack)
+        dummy_track.track_points = []
+        self.calc = TrackCalculator(dummy_track)
+
+    def test_empty_track_distance(self):
+        """Check if an empty track returns 0.0 distance."""
+        self.assertEqual(self.calc.calculate_total_distance(), 0.0)
+
+    def test_empty_track_power_profile(self):
+        """Check if an empty track returns an empty power profile."""
+        self.assertEqual(self.calc.calculate_power_profile(), [])
+
+    def test_empty_track_air_density(self):
+        """Check if air density calculation handles empty tracks securely."""
+        self.assertEqual(self.calc.calculate_air_density_profile(), [])
+
+    def test_calories_zero_work(self):
+        """Check if 0 mechanical work correctly results in 0 burned calories."""
+        report = self.calc.calculate_energy_and_calories(sim=None)
+        self.assertEqual(report["calories_burned_kcal"], 0.0)
 
 
 if __name__ == '__main__':

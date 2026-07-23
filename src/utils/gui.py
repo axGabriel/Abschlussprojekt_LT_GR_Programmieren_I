@@ -1,6 +1,6 @@
 import customtkinter as ctk
 import logging
-import os
+import webbrowser
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -9,13 +9,13 @@ def show_summary_window(calculator, sim_lipo, sim_nmc, energy_report):
     """
     Opens a CustomTkinter GUI window summarizing the simulation results and linking plots.
     """
-    # Helper function to open files in Windows default viewer
+    # Helper function to open files cross-platform
     def open_plot(relative_path):
         full_path = Path(relative_path).resolve()
         if full_path.exists():
-            os.startfile(full_path)
+            webbrowser.open(full_path.as_uri())
         else:
-            logger.warning(f"Could not open file, path does not exist: {full_path}")
+            logger.warning(f"Datei konnte nicht geöffnet werden, Pfad existiert nicht: {full_path}")
 
     try:
         # Set up CustomTkinter appearance
@@ -24,14 +24,14 @@ def show_summary_window(calculator, sim_lipo, sim_nmc, energy_report):
         
         # Initialize root window
         root = ctk.CTk()
-        root.title("E-Bike Simulation Summary")
+        root.title("E-Bike Simulation Zusammenfassung")
         root.geometry("700x550")
         root.resizable(False, False)
         
         # Header title
         header = ctk.CTkLabel(
             root, 
-            text="E-Bike Simulation Summary Results", 
+            text="E-Bike Simulation Zusammenfassung", 
             font=ctk.CTkFont(size=20, weight="bold")
         )
         header.pack(pady=15)
@@ -47,7 +47,7 @@ def show_summary_window(calculator, sim_lipo, sim_nmc, energy_report):
         
         ctk.CTkLabel(
             left_frame, 
-            text="Route Statistics", 
+            text="Routen-Statistik", 
             font=ctk.CTkFont(size=14, weight="bold")
         ).pack(anchor="w", padx=15, pady=(10, 5))
         
@@ -66,11 +66,11 @@ def show_summary_window(calculator, sim_lipo, sim_nmc, energy_report):
             pace_sec = 0
             
         stats_text = (
-            f"• Distance: {calculator.calculate_total_distance():.2f} km\n\n"
-            f"• Duration: {hours:02d}:{minutes:02d}:{seconds:02d}\n\n"
-            f"• Avg Speed: {calculator.calculate_average_speed():.1f} km/h\n\n"
-            f"• Max Speed: {calculator.calculate_max_speed():.1f} km/h\n\n"
-            f"• Avg Pace: {pace_min}:{pace_sec:02d} min/km"
+            f"• Distanz: {calculator.calculate_total_distance():.2f} km\n\n"
+            f"• Dauer: {hours:02d}:{minutes:02d}:{seconds:02d}\n\n"
+            f"• Ø-Geschwindigkeit: {calculator.calculate_average_speed():.1f} km/h\n\n"
+            f"• Max-Geschwindigkeit: {calculator.calculate_max_speed():.1f} km/h\n\n"
+            f"• Ø-Pace: {pace_min}:{pace_sec:02d} min/km"
         )
         
         ctk.CTkLabel(
@@ -87,19 +87,19 @@ def show_summary_window(calculator, sim_lipo, sim_nmc, energy_report):
         
         ctk.CTkLabel(
             right_frame, 
-            text="Energy & Battery", 
+            text="Energie & Akku", 
             font=ctk.CTkFont(size=14, weight="bold")
         ).pack(anchor="w", padx=15, pady=(10, 5))
         
         energy_text = (
-            f"• Total Work: {energy_report['total_work_wh']:.1f} Wh\n\n"
-            f"• Rider Share: {energy_report['rider_share_pct']:.1f}%\n"
+            f"• Gesamtarbeit: {energy_report['total_work_wh']:.1f} Wh\n\n"
+            f"• Eigenleistung: {energy_report['rider_share_pct']:.1f}%\n"
             f"  ({energy_report['rider_work_wh']:.1f} Wh)\n\n"
-            f"• Motor Share: {energy_report['motor_share_pct']:.1f}%\n"
+            f"• Motorleistung: {energy_report['motor_share_pct']:.1f}%\n"
             f"  ({energy_report['motor_work_wh']:.1f} Wh)\n\n"
-            f"• Calories Burned: {energy_report['calories_burned_kcal']:.0f} kcal\n\n"
-            f"• Final LiPo SoC: {sim_lipo.socValues[-1]*100:.1f}%\n\n"
-            f"• Final NMC SoC: {sim_nmc.socValues[-1]*100:.1f}%"
+            f"• Kalorienverbrauch: {energy_report['calories_burned_kcal']:.0f} kcal\n\n"
+            f"• Restladung LiPo: {sim_lipo.soc_values[-1]*100:.1f}%\n\n"
+            f"• Restladung NMC: {sim_nmc.soc_values[-1]*100:.1f}%"
         )
         
         ctk.CTkLabel(
@@ -115,22 +115,22 @@ def show_summary_window(calculator, sim_lipo, sim_nmc, energy_report):
         
         ctk.CTkLabel(
             plot_frame, 
-            text="Open Generated Charts & Maps:", 
+            text="Erstellte Diagramme & Karten öffnen:", 
             font=ctk.CTkFont(size=12, weight="bold")
         ).grid(row=0, column=0, columnspan=4, sticky="w", padx=15, pady=(10, 5))
         
         # Row 1 of buttons
         ctk.CTkButton(plot_frame, text="Track Map (2D)", width=140, command=lambda: open_plot("results/track_plot.png")).grid(row=1, column=0, padx=10, pady=5)
-        ctk.CTkButton(plot_frame, text="Elevation Profile", width=140, command=lambda: open_plot("results/elevation_profile.png")).grid(row=1, column=1, padx=10, pady=5)
-        ctk.CTkButton(plot_frame, text="Speed Profile", width=140, command=lambda: open_plot("results/speed_profile.png")).grid(row=1, column=2, padx=10, pady=5)
-        ctk.CTkButton(plot_frame, text="Interactive 3D Map ", fg_color="#2b7a78", hover_color="#3a8f8d", width=140, command=lambda: open_plot("results/interactive_map.html")).grid(row=1, column=3, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="Höhenprofil", width=140, command=lambda: open_plot("results/elevation_profile.png")).grid(row=1, column=1, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="Speed Profil", width=140, command=lambda: open_plot("results/speed_profile.png")).grid(row=1, column=2, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="3D Karte (Interaktiv)", fg_color="#2b7a78", hover_color="#3a8f8d", width=140, command=lambda: open_plot("results/interactive_map.html")).grid(row=1, column=3, padx=10, pady=5)
         
         # Row 2 of buttons
-        ctk.CTkButton(plot_frame, text="Temperature Profile", width=140, command=lambda: open_plot("results/temperature_profile.png")).grid(row=2, column=0, padx=10, pady=5)
-        ctk.CTkButton(plot_frame, text="Pace Profile", width=140, command=lambda: open_plot("results/pace_profile.png")).grid(row=2, column=1, padx=10, pady=5)
-        ctk.CTkButton(plot_frame, text="SoC Comparison", width=140, command=lambda: open_plot("results/soc_comparison.png")).grid(row=2, column=2, padx=10, pady=5)
-        ctk.CTkButton(plot_frame, text="Close Summary", fg_color="#d9534f", hover_color="#c9302c", width=140, command=root.destroy).grid(row=2, column=3, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="Temperatur Profil", width=140, command=lambda: open_plot("results/temperature_profile.png")).grid(row=2, column=0, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="Pace Profil", width=140, command=lambda: open_plot("results/pace_profile.png")).grid(row=2, column=1, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="SoC Vergleich", width=140, command=lambda: open_plot("results/soc_comparison.png")).grid(row=2, column=2, padx=10, pady=5)
+        ctk.CTkButton(plot_frame, text="Schließen", fg_color="#d9534f", hover_color="#c9302c", width=140, command=root.destroy).grid(row=2, column=3, padx=10, pady=5)
 
         root.mainloop()
     except Exception as e:
-        logger.error(f"Failed to open GUI summary window: {e}")
+        logger.error(f"GUI-Fenster konnte nicht geöffnet werden: {e}")

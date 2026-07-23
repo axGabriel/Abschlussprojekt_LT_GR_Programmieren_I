@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # source data can be picked from exploerer
 def select_input_file(default_path: Path) -> Path:
-    """Öffnet ein Windows-Explorer-Fenster zur Auswahl einer CSV-Datei."""
+    """opens windows explorer for choosing data file"""
     root = tk.Tk()
     root.withdraw() 
     
@@ -99,8 +99,8 @@ def main():
             capacity_nom_Ah=10,
             internal_resistance_mOhm= 80.0,
             initial_soc=1.0,
-            Vmin=32.0,
-            Vmax=42.0
+            v_min=32.0,
+            v_max=42.0
         )
         
         # simulation
@@ -114,15 +114,13 @@ def main():
         logger.info(f"Endgeschwindigkeit: {vehicle_lipo.v:.2f} m/s")
 
 
-        # Simulate Nmc battery
-        logger.info("---Nmc-Battery Simulation---")
         battery_nmc = NmcBatteryPack(
             capacity_nom_Ah=10,
             internal_resistance_mOhm= 70.0,
             initial_soc=1.0,
-            Vmin=32.0,
-            Vmax=42.0
-        ) 
+            v_min=32.0,
+            v_max=42.0
+        )
 
         # simulation
         motor_nmc = Motor(efficiency=0.85)
