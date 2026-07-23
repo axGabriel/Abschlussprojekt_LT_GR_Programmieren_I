@@ -528,5 +528,59 @@ class TrackCalculator():
         return temperatures
 
 
+
+    def calculate_pace_profile(self) -> list[float]:
+        """
+        Calculates the pace (in minutes per kilometer) for each individual full kilometer.
+        Returns a list of floats (e.g. [5.2, 4.8, 5.0] for km 1, 2, 3...).
+        """
+        segment_distances = self._calculate_segment_distances_m()
+        segment_times = self._calculate_segment_times_s()
+        
+        if len(segment_distances) == 0 or segment_times is None:
+            return []
+            
+        # Calculate cumulative distance (in meters) and cumulative time (in seconds)
+        cum_distance_m = np.zeros(len(segment_distances) + 1)
+        cum_distance_m[1:] = np.cumsum(segment_distances)
+        
+        cum_time_s = np.zeros(len(segment_times) + 1)
+        cum_time_s[1:] = np.cumsum(segment_times)
+        
+        total_dist_km = cum_distance_m[-1] / 1000.0
+        num_full_km = int(total_dist_km)
+        
+        if num_full_km < 1:
+            # If the track is shorter than 1 km, calculate pace for the whole segment
+            total_time_min = cum_time_s[-1] / 60.0
+            return [total_time_min / total_dist_km] if total_dist_km > 0 else []
+            
+        # Interpolate the times at exact kilometer markers (1000m, 2000m, ...)
+        target_distances_m = [1000 * k for k in range(1, num_full_km + 1)]
+        times_at_km = np.interp(target_distances_m, cum_distance_m, cum_time_s)
+        
+        times_all = [0.0] + list(times_at_km)
+        pace_profile = []
+        
+        for k in range(1, len(times_all)):
+            segment_time_s = times_all[k] - times_all[k - 1]
+            pace_min_km = segment_time_s / 60.0
+            pace_profile.append(pace_min_km)
+            
+        return pace_profile
+
+    def calculate_average_pace(self) -> float:
+        """
+        Calculates the average pace of the entire track in minutes per kilometer.
+        """
+        total_dist_km = self.calculate_total_distance()
+        total_time_s = self.calculate_total_time()
+        
+        if total_dist_km <= 0 or total_time_s <= 0:
+            return 0.0
+            
+        total_time_min = total_time_s / 60.0
+        return total_time_min / total_dist_km
+
 if __name__ == '__main__':
     pass
