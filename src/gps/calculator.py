@@ -273,28 +273,31 @@ class TrackCalculator():
     def calculate_air_density_profile(self):
         """
         Uses elevation and temperature from the GPS data to get air density.
+        Calculates the exact average density for each segment between start and end point.
         Returns a list of air density values in kg/m^3.
         """
         track_points = self.gps_track.track_points
-        if not track_points:
+        if not track_points or len(track_points) < 2:
             return []
         
-        # exponent for barometric formula
         exponent = (cfg.PHYSICS.GRAVITY_EARTH * cfg.ATMOSPHERE.M_MOLAR_MASS_AIR) / (cfg.ATMOSPHERE.R_U_IDEAL_GAS * cfg.ATMOSPHERE.L_TEMP_LAPSE_RATE)
         R_spec = cfg.ATMOSPHERE.R_U_IDEAL_GAS / cfg.ATMOSPHERE.M_MOLAR_MASS_AIR
         
-        densities = []
+        point_densities = []
         for p in track_points:
             h = p.elevation if p.elevation is not None else 0.0
             temp_c = p.temperature if p.temperature is not None else 20.0
-            
             T_kelvin = temp_c + 273.15
             p_h = cfg.ATMOSPHERE.P0_PASCAL * (1 - (cfg.ATMOSPHERE.L_TEMP_LAPSE_RATE * h) / cfg.ATMOSPHERE.T0_KELVIN) ** exponent
             rho = p_h / (R_spec * T_kelvin)
-
-            densities.append(rho)
+            point_densities.append(rho)
             
-        return densities
+        segment_densities = []
+        for i in range(len(point_densities) - 1):
+            avg_rho = (point_densities[i] + point_densities[i+1]) / 2.0
+            segment_densities.append(avg_rho)
+            
+        return segment_densities
 
     def calculate_power_profile(
         self,
@@ -325,10 +328,8 @@ class TrackCalculator():
         a = np.array(accelerations)
         phi = np.array(slopes)
         
-        if densities and len(densities) > len(speeds):
-            rho_air = np.array(densities[:-1])
-        else:
-            rho_air = cfg.PHYSICS.RHO_AIR_SEA_LEVEL
+        if densities and len(densities) == len(speeds):
+            rho_air = np.array(densities)
 
         F_inertia = m_total * a
         F_slope = m_total * cfg.PHYSICS.GRAVITY_EARTH * np.sin(phi)
@@ -505,7 +506,7 @@ class TrackCalculator():
         human_work_joules = max(0.0, total_work_joules - motor_work_joules)
 
         # Convert mechanical Joules to dietary kcal
-        calories_kcal = calories_kcal = human_work_joules / (cfg.BIO.JOULES_PER_KCAL * human_efficiency)
+        calories_kcal = human_work_joules / (cfg.BIO.JOULES_PER_KCAL * human_efficiency)
 
         return {
             "total_work_wh": total_work_joules / 3600.0,

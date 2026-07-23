@@ -22,77 +22,111 @@ class TrackPlotter:
 
     def plot_track_path(self, output_path):
         """
-        Creates a simple plot of the track path (Lat/Lon) and saves it.
+        Creates a map plot of the track path (Lat/Lon) color-coded by elevation.
         """
-        track_points = self.gps_track.track_points
-        lats = [p.latitude for p in track_points]
-        lons = [p.longitude for p in track_points]
+        import matplotlib.colors as mcolors
+        from matplotlib.collections import LineCollection
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(lons, lats, marker='.', linestyle='-', color='blue')
-        plt.title(f"GPS Track Visualization - {self.gps_track.dataset_name}")
-        plt.xlabel("Longitude")
-        plt.ylabel("Latitude")
-        plt.grid(True)
+        track_points = self.gps_track.track_points
+        lats = np.array([p.latitude for p in track_points])
+        lons = np.array([p.longitude for p in track_points])
+        elevations = np.array([p.elevation if p.elevation is not None else 0 for p in track_points])
+
+        # Prepare line segments
+        points = np.array([lons, lats]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+        # Average elevation per segment
+        segment_elevations = (elevations[:-1] + elevations[1:]) / 2.0
+
+        # Terrain colormap (clipped to 85% to avoid white peaks)
+        terrain_cmap = plt.get_cmap('terrain')
+        cmap = mcolors.LinearSegmentedColormap.from_list(
+            'dark_terrain', terrain_cmap(np.linspace(0.0, 0.85, 256))
+        )
+        norm = plt.Normalize(elevations.min(), elevations.max())
+
+        lc = LineCollection(segments, cmap=cmap, norm=norm)
+        lc.set_array(segment_elevations)
+        lc.set_linewidth(3.0)
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        line = ax.add_collection(lc)
+
+        # Scale axes with padding
+        padding_lon = (lons.max() - lons.min()) * 0.05 if lons.max() != lons.min() else 0.01
+        padding_lat = (lats.max() - lats.min()) * 0.05 if lats.max() != lats.min() else 0.01
+        ax.set_xlim(lons.min() - padding_lon, lons.max() + padding_lon)
+        ax.set_ylim(lats.min() - padding_lat, lats.max() + padding_lat)
+
+        # Add colorbar
+        cbar = fig.colorbar(line, ax=ax)
+        cbar.set_label('Elevation / m')
+
+        ax.set_title(f"GPS Track Map - {self.gps_track.dataset_name}")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+        ax.grid(True, linestyle=':', alpha=0.6)
         
-        # create the output directory if it doesn't exist
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
         plt.savefig(output_path)
         plt.close()
-        logger.info(f"Plot successfully saved to: {output_path}")
+        logger.info(f"Color-coded track map successfully saved to: {output_path}")
 
 
     def plot_elevation_profile(self, calculator, output_path):
         """
-        Creates a plot of the elevation profile over distance,
-        color-coded by speed.
+        Creates an elevation profile over distance, color-coded by speed.
         """
         import matplotlib.colors as mcolors
         from matplotlib.collections import LineCollection
+
         track_points = self.gps_track.track_points
         elevations = np.array([p.elevation for p in track_points])
         
-        # Distanzen berechnen
+        # Calculate cumulative distance
         segment_distances_km = calculator._calculate_segment_distances_m() / 1000.0
         cum_distances = np.zeros(len(track_points))
         cum_distances[1:] = np.cumsum(segment_distances_km)
         
-        # Geschwindigkeiten für jedes Segment abrufen (in km/h)
+        # Get speeds in km/h
         segment_speeds_kmh = np.array(calculator.calculate_speed_profile()) * 3.6
         
-        # Koordinaten für die LineCollection vorbereiten (Start- und Endpunkte pro Liniensegment)
+        # Prepare line segments
         points = np.array([cum_distances, elevations]).T.reshape(-1, 1, 2)
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
-        # Eigene Colormap erstellen: Grün (langsam) -> Gelb -> Rot (schnell)
+
+        # Custom colormap: green (slow) -> yellow -> red (fast)
         cmap = mcolors.LinearSegmentedColormap.from_list("green_red", ["green", "yellow", "red"])
-        
-        # Farbskala an die auftretenden Geschwindigkeiten anpassen (0 bis Max-Speed)
         max_speed = segment_speeds_kmh.max() if len(segment_speeds_kmh) > 0 and segment_speeds_kmh.max() > 0 else 1
         norm = plt.Normalize(0, max_speed)
-        # Die mehrfarbige Linie erstellen
+
         lc = LineCollection(segments, cmap=cmap, norm=norm)
         lc.set_array(segment_speeds_kmh)
         lc.set_linewidth(2.5)
+
         fig, ax = plt.subplots(figsize=(10, 6))
         line = ax.add_collection(lc)
         
-        # Achsen-Limits setzen (damit das Diagramm nicht leer bleibt)
+        # Scale axes with padding
         ax.set_xlim(cum_distances.min(), cum_distances.max())
         elev_min, elev_max = elevations.min(), elevations.max()
         padding = (elev_max - elev_min) * 0.1 if elev_max != elev_min else 10
         ax.set_ylim(elev_min - padding, elev_max + padding)
-        # Den vertikalen Farbbalken (Legende) rechts hinzufügen
+
+        # Add colorbar
         cbar = fig.colorbar(line, ax=ax)
-        cbar.set_label('Geschwindigkeit / km/h')
-        ax.set_title(f"Höhenprofil nach Geschwindigkeit - {self.gps_track.dataset_name}")
-        ax.set_xlabel("Distanz / km")
-        ax.set_ylabel("Höhe / m")
+        cbar.set_label('Speed / km/h')
+
+        ax.set_title(f"Elevation Profile by Speed - {self.gps_track.dataset_name}")
+        ax.set_xlabel("Distance / km")
+        ax.set_ylabel("Elevation / m")
         ax.grid(True, linestyle=':', alpha=0.6)
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path)
         plt.close()
-        logger.info(f"Höhenprofil (Speed-Color) gespeichert unter: {output_path}")
+        logger.info(f"Color-coded elevation profile saved to: {output_path}")
         
 
 
@@ -127,8 +161,8 @@ class TrackPlotter:
         
         cum_time = np.zeros(len(durations) + 1)
         cum_time[1:] = np.cumsum(durations)
-        soc_lipo_pct = np.array(sim_lipo.socValues) * 100.0
-        soc_nmc_pct = np.array(sim_nmc.socValues) * 100.0
+        soc_lipo_pct = np.array(sim_lipo.soc_values) * 100.0
+        soc_nmc_pct = np.array(sim_nmc.soc_values) * 100.0
         plt.figure(figsize=(10, 6))
         plt.plot(cum_time, soc_lipo_pct, label="LiPo Akku", color="blue", linestyle="-", linewidth=1.5)
         plt.plot(cum_time, soc_nmc_pct, label="NMC Akku", color="red", linestyle="--", linewidth=1.5)
