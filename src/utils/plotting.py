@@ -119,34 +119,38 @@ class TrackPlotter:
 
     def plot_temperature_profile(self, calculator, output_path, window_size: int = 5):
         """
-        creates a plot of temperature using moving average for smoothing.
+        Creates a plot of temperature using moving average for smoothing.
         """
         raw_temps = calculator.calculate_temperature_profile()
         
-        # Glättung anwenden:
+        # Apply moving average smoothing
         smoothed_temps = utils.moving_average(raw_temps, window_size=window_size)
         
         durations = np.array(calculator.calculate_segment_durations())
-        cum_time = np.zeros(len(durations) + 1)
-        cum_time[1:] = np.cumsum(durations)
+        cum_time_sec = np.zeros(len(durations) + 1)
+        cum_time_sec[1:] = np.cumsum(durations)
+        
+        # Convert cumulative seconds to minutes
+        cum_time_min = cum_time_sec / 60.0
+        
         plt.figure(figsize=(10, 6))
         
-        # Rohdaten leicht transparent im Hintergrund plotten:
-        plt.plot(cum_time[:-1], raw_temps, color='gray', alpha=0.4, linestyle=':', label="Messwerte (Rohdaten)")
+        # Plot raw data slightly transparent in the background
+        plt.plot(cum_time_min[:-1], raw_temps, color='gray', alpha=0.4, linestyle=':', label="Raw Data")
         
-        # Geglättete Daten im Vordergrund plotten:
-        plt.plot(cum_time[:-1], smoothed_temps, color='orange', linewidth=2.0, label=f"Geglättet (Moving Avg, w={window_size})")
+        # Plot smoothed data in the foreground
+        plt.plot(cum_time_min[:-1], smoothed_temps, color='orange', linewidth=2.0, label=f"Smoothed (Moving Avg, w={window_size})")
         
-        plt.title(f"Temperaturprofil - {self.gps_track.dataset_name}")
-        plt.xlabel("Zeit / s")
-        plt.ylabel("Temperatur / °C")
+        plt.title(f"Temperature Profile - {self.gps_track.dataset_name}")
+        plt.xlabel("Time / min")
+        plt.ylabel("Temperature / °C")
         plt.grid(True)
         plt.legend(loc="upper right")
         
         output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_path)
         plt.close()
-        logger.info(f"Geglättetes Temperaturprofil gespeichert unter: {output_path}")
+        logger.info(f"Smoothed temperature profile saved to: {output_path}")
 
 
     def plot_pace_profile(self, calculator, output_path):

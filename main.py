@@ -5,6 +5,7 @@ from pathlib import Path
 from src.gps.gps_classes import GpsTrack
 from src.gps.calculator import TrackCalculator
 from src.utils.plotting import TrackPlotter
+from src.utils.gui import show_summary_window
 
 from src.core.battery_pack import LiPoBatteryPack, NmcBatteryPack
 from src.core.motor import Motor
@@ -157,7 +158,8 @@ def main():
         logger.info("--- Pace Report ---")
         logger.info(f"Average Pace: {avg_min}:{avg_sec:02d} min/km")
 
-                
+        # Open Tkinter summary GUI
+        show_summary_window(calculator, sim_lipo, sim_nmc, energy_report)        
 
 
     except Exception as error:
