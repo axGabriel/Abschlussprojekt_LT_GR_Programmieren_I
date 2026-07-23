@@ -3,9 +3,6 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class PhysicsConstants:
     GRAVITY_EARTH: float = 9.81
-    GRAVITY_MOON: float = 1.62
-    GRAVITY_MARS: float = 3.71
-    GRAVITY_JUPITER: float = 24.79
     EARTH_RADIUS_KM: float = 6371.0
     EARTH_RADIUS_M: float = 6_371_000.0
     RHO_AIR_SEA_LEVEL: float = 1.225
